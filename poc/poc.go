@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"narpimage"
 	"reflect"
+
+	"github.com/AmbigousParityBit/NARPImage"
 )
 
 func main() {
 	s := "./testitem."
 
-	narpimg := new(narpimage.NARPImage)
+	narpimg := new(NARPImage.NARPImage)
 
 	err := narpimg.ConstructFromJpgFile(s+"jpg", true)
 	fmt.Println()
@@ -19,6 +20,9 @@ func main() {
 	}
 	fmt.Printf("Constructed NARP image in memory from jpg file <%sjpg> ; bounds: %v, %v.\n",
 		s, narpimg.Size.X, narpimg.Size.Y)
+	fmt.Printf("Number of\n\t pixels = %v,\n\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
+		int(narpimg.Size.X)*int(narpimg.Size.Y), len(narpimg.NARPixels),
+		100-100*len(narpimg.NARPixels)/(int(narpimg.Size.X)*int(narpimg.Size.Y)))
 
 	err = narpimg.Save(s+"narp", true)
 	if err != nil {
@@ -26,8 +30,20 @@ func main() {
 		return
 	}
 	fmt.Printf("Saved NARP image from memory to file <%snarp>.\n", s)
+	/*
+		count := 0
+		for point, pixel := range narpimg.NARPixels {
+			fmt.Println(point, "::\t", pixel)
+			count++
+			if count == 10 {
+				//			return
+			}
+		}
+	*/
 
-	narpimgAfterLoading := new(narpimage.NARPImage)
+	fmt.Println()
+
+	narpimgAfterLoading := new(NARPImage.NARPImage)
 	err = narpimgAfterLoading.Load(s + "narp")
 	if err != nil {
 		fmt.Println(err)
