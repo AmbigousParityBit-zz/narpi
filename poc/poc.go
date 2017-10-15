@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	s := "./testitem."
+	s := "./testitem1."
 
 	narpimg := new(NARPImage.NARPImage)
 
@@ -56,4 +56,11 @@ func main() {
 	} else {
 		fmt.Printf("Loaded NARP image is different from the previous one in memory.\n")
 	}
+
+	err = narpimg.DeconstructToPngFile(s + "png")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("Saved NARP image from memory to file <%spng>.\n", s)
 }

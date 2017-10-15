@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"os"
 )
 
@@ -38,6 +39,37 @@ type NARPImage struct {
 	NARPixels map[Point]NotARegularPixel
 	Size      Point
 	Version   string
+}
+
+func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
+	img := image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
+
+	for point, narpixel := range narpimage.NARPixels {
+		color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
+		for h := uint8(0); h < narpixel.HSize; h++ {
+			img.Set(int(point.X+uint16(h)), int(point.Y), color)
+			fmt.Println(int(point.X+uint16(h)), int(point.Y), color)
+			if narpixel.VSize != nil && len(narpixel.VSize) > 0 {
+				colorMode := true
+				lastColoredCount := uint16(0)
+				for _, vsize := range narpixel.VSize[h] {
+					if colorMode {
+						for v := uint8(1); v <= vsize; v++ {
+							img.Set(int(point.X+uint16(h)), int(point.Y+lastColoredCount+uint16(v)), color)
+						}
+						lastColoredCount = lastColoredCount + uint16(vsize)
+						colorMode = !colorMode
+					}
+				}
+			}
+		}
+	}
+
+	f, error := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
+	defer f.Close()
+	png.Encode(f, img)
+
+	return error
 }
 
 func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) error {
