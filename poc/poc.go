@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/AmbigousParityBit/NARPImage"
@@ -9,6 +10,9 @@ import (
 
 func main() {
 	s := "./testitem."
+	if len(os.Args) > 0 {
+		s = "./testitem" + os.Args[1] + "."
+	}
 
 	narpimg := new(NARPImage.NARPImage)
 
@@ -30,18 +34,6 @@ func main() {
 		return
 	}
 	fmt.Printf("Saved NARP image from memory to file <%snarp>.\n", s)
-	/*
-		count := 0
-		for point, pixel := range narpimg.NARPixels {
-			fmt.Println(point, "::\t", pixel)
-			count++
-			if count == 10 {
-				//			return
-			}
-		}
-	*/
-
-	fmt.Println()
 
 	narpimgAfterLoading := new(NARPImage.NARPImage)
 	err = narpimgAfterLoading.Load(s + "narp")

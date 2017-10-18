@@ -11,3 +11,9 @@
 *.out
 
 *.narp
+*.bak
+*.flif
+*.png
+*.webp
+*.bmp
+*.temp
