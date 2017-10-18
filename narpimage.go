@@ -24,6 +24,7 @@ type RGBAColor struct {
 
 type NotARegularPixel struct {
 	HSize uint8             // horizontal flood size
+	Color RGBAColor         // color of pixel
 	VSize map[uint8][]uint8 // map has cells with count of vertical pixels of the same color and then the skip number, repeat
 	//
 	//	ex.: HSize=3, VSize[2]=[2,1,2] means area of the same color:
@@ -32,7 +33,6 @@ type NotARegularPixel struct {
 	//
 	//			X
 	//			X
-	Color RGBAColor // color of pixel
 }
 
 type NARPImage struct {
@@ -45,27 +45,36 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	img := image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
 
 	for point, narpixel := range narpimage.NARPixels {
+
 		color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
 		for h := uint8(0); h < narpixel.HSize; h++ {
+
 			img.Set(int(point.X+uint16(h)), int(point.Y), color)
-			fmt.Println(int(point.X+uint16(h)), int(point.Y), color)
 			if narpixel.VSize != nil && len(narpixel.VSize) > 0 {
-				colorMode := true
 				lastColoredCount := uint16(0)
+
 				for _, vsize := range narpixel.VSize[h] {
-					if colorMode {
-						for v := uint8(1); v <= vsize; v++ {
-							img.Set(int(point.X+uint16(h)), int(point.Y+lastColoredCount+uint16(v)), color)
-						}
-						lastColoredCount = lastColoredCount + uint16(vsize)
-						colorMode = !colorMode
+
+					for v := uint8(0); v < vsize; v++ {
+
+						//fmt.Println(point, narpixel.VSize, int(point.X+uint16(h)), int(point.Y+lastColoredCount+uint16(v)+1))
+						img.Set(int(point.X+uint16(h)), int(point.Y+lastColoredCount+uint16(v)+1), color)
+
 					}
+					lastColoredCount = lastColoredCount + uint16(vsize)
+
 				}
+
 			}
+
 		}
+
 	}
 
 	f, error := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
+	if error != nil {
+		return error
+	}
 	defer f.Close()
 	png.Encode(f, img)
 
@@ -74,10 +83,10 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 
 func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) error {
 	reader, err := os.Open(s)
-	defer reader.Close()
 	if err != nil {
 		return err
 	}
+	defer reader.Close()
 
 	img, err := jpeg.Decode(reader)
 	if err != nil {
@@ -98,10 +107,10 @@ func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) er
 
 func (narpimage *NARPImage) Load(s string) error {
 	file, err := os.Open(s)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	narpimage.initialize()
 
@@ -118,10 +127,10 @@ func (narpimage *NARPImage) Save(s string, overwrite bool) error {
 	}
 
 	file, err := os.Create(s)
-	defer file.Close()
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	b := new(bytes.Buffer)
 	err = gob.NewEncoder(b).Encode(narpimage)
@@ -136,7 +145,7 @@ func (narpimage *NARPImage) Save(s string, overwrite bool) error {
 func (narpimage *NARPImage) initialize() {
 	narpimage.NARPixels = make(map[Point]NotARegularPixel)
 	narpimage.Size = Point{0, 0}
-	narpimage.Version = "1"
+	narpimage.Version = "0.5"
 }
 
 func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) error {
@@ -164,7 +173,7 @@ func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) e
 			if !(visited[x][y]) {
 				narp := getNARP(x, y, img, &visited)
 				narpimage.NARPixels[Point{x, y}] = *narp
-				//				if len(narp.VSize) == 0 {
+				//				if len(narp.VSize) > 0 {
 				//					fmt.Println("                                 ", *narp)
 				//				}
 
@@ -202,7 +211,7 @@ func getNARP(x uint16, y uint16, img image.Image, visited *[][]bool) (narp *NotA
 		narp.HSize++
 		(*visited)[i][y] = true
 		verticals := getVerticalFloodCount(x, y, img, visited)
-		if verticals != nil && len(*verticals) > 0 {
+		if len(*verticals) > 0 {
 			narp.VSize[uint8(i-x)] = append(narp.VSize[uint8(i-x)], *verticals...)
 		}
 	}
@@ -211,8 +220,8 @@ func getNARP(x uint16, y uint16, img image.Image, visited *[][]bool) (narp *NotA
 }
 
 func appendToVerticals(verticals *[]uint8, count uint8) {
-	if verticals == nil {
-		verticals = &[]uint8{}
+	if len(*verticals) == 0 && count == 0 {
+		return
 	}
 	*verticals = append(*verticals, count)
 }
@@ -222,24 +231,24 @@ func getVerticalFloodCount(x uint16, y uint16, img image.Image, visited *[][]boo
 	color := RGBAColor{r, g, b}
 	count := uint8(0)
 
-	findingColor := true
+	if verticals == nil {
+		verticals = &[]uint8{}
+	}
 
-	for i := y + 1; i <= uint16(img.Bounds().Max.Y); i++ {
-		if findingColor == compareColor(img.At(int(x), int(i)), color) {
-			count++
-			(*visited)[x][i] = true
-		} else {
+	for i := y + 1; i <= uint16(img.Bounds().Max.Y) && compareColor(img.At(int(x), int(i)), color); i++ {
+		(*visited)[x][i] = true
+
+		count++
+		if count == 254 {
 			appendToVerticals(verticals, count)
-			findingColor = !findingColor
-		}
-		if int(count+1) >= 256 {
 			count = 0
-			findingColor = !findingColor
 		}
 	}
 	if count > 0 {
 		appendToVerticals(verticals, count)
 	}
-
+	//if len(*verticals) > 0 {
+	//		fmt.Println(*verticals)
+	//	}
 	return verticals
 }

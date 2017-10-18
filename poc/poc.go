@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	s := "./testitem1."
+	s := "./testitem."
 
 	narpimg := new(NARPImage.NARPImage)
 
