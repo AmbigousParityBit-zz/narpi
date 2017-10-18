@@ -1,0 +1,31 @@
+syntax = "proto3";
+package NARPImage;
+
+// notaregularpixel package
+
+message Point {
+	int32	X = 1;
+	int32	Y = 2;
+}
+
+message RGBAColor {
+	int32	R = 1;
+	int32	G = 2;
+	int32	B = 3;
+}
+
+message VSize {
+	repeated int32 value = 1;
+}
+
+message NotARegularPixel {
+	int32				HSize = 1;
+	RGBAColor			Color = 2;
+	map<int32, VSize> 	VSize = 3;
+}
+
+message NARPImage {
+	map<Point, NotARegularPixel>	NARPixels = 1;
+	Point 							Size = 2;
+	string 							Version = 3;
+}
