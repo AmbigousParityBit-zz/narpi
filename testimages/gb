@@ -1,0 +1,7 @@
+#/bin/bash
+pkill -f feh
+go build
+if [ $? = "0" ]; then
+	./poc $1
+	feh -Z -D3 ./testitem$1.jpg ./testitem$1.png &
+fi
