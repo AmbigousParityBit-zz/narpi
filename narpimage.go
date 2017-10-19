@@ -246,6 +246,10 @@ func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) e
 				narp := getNARP(x, y, img, &visited)
 				narp.x = x
 				narp.y = y
+				log.Print("Pixel's from constructing::", x, y)
+				if x > 5 {
+					os.Exit(0)
+				}
 				narpimage.NARPixels = append(narpimage.NARPixels, *narp)
 			}
 		}
