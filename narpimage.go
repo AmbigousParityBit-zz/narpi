@@ -58,9 +58,11 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	x, y := uint16(0), uint16(0)
 
 	for _, narpixel := range narpimage.NARPixels {
-		//printNARPixel(&narpixel, 5)
-		if !visited[x][y] {
+		printNARPixel(&narpixel, 5)
+		if !(visited[x][y]) {
 			printNARPixel(&narpixel, 0)
+			log.Print("inner loop", x)
+
 			if narpixel.x != x || narpixel.y != y {
 				log.Panicf("mismatched coordinates, is: %v,%v => should be %v,%v", narpixel.x, narpixel.y, x, y)
 			}
@@ -80,7 +82,6 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 		}
 		for visited[x][y] {
 			x++
-			log.Print("inner loop", x)
 			if x >= narpimage.Size.X {
 				y++
 				x = 0
@@ -243,12 +244,14 @@ func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) e
 		showProgress(y, narpimage.Size.Y-1, showprogress)
 		for x := boundsmin.X; x < narpimage.Size.X; x++ {
 			if !(visited[x][y]) {
+				if x < 5 && y < 5 {
+					log.Print("putToNarpImage::", x, y)
+				}
 				narp := getNARP(x, y, img, &visited)
 				narp.x = x
 				narp.y = y
-				log.Print("Pixel's from constructing::", x, y)
 				if x > 5 {
-					os.Exit(0)
+					//os.Exit(0)
 				}
 				narpimage.NARPixels = append(narpimage.NARPixels, *narp)
 			}
@@ -282,7 +285,7 @@ func getNARP(x uint16, y uint16, img image.Image, visited *[][]bool) (narp *NotA
 	hsize := -1
 
 	for xH := x; compareColor(img.At(int(xH), int(y)), narp.Color) && xH < uint16(img.Bounds().Max.X) && hsize < 253; xH++ {
-		if !(*visited)[xH][y] {
+		if !((*visited)[xH][y]) {
 			(*visited)[xH][y] = true
 			verticals := getVerticalFloodCount(xH, y, img, visited)
 			if verticals != nil {
@@ -329,7 +332,7 @@ func getVerticalFloodCount(x uint16, y uint16, img image.Image, visited *[][]boo
 	vsize := uint16(0)
 
 	for yV := y + 1; yV < uint16(img.Bounds().Max.Y) && compareColor(img.At(int(x), int(yV)), color); yV++ {
-		if !(*visited)[x][yV] {
+		if !((*visited)[x][yV]) {
 			(*visited)[x][yV] = true
 			vsize++
 		}
