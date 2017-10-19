@@ -5,13 +5,11 @@ package NARPImage
 import (
 	"bytes"
 	"encoding/gob"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"log"
 	"os"
 )
 
@@ -33,12 +31,19 @@ type NotARegularPixel struct {
 	//			X
 	//			X
 	//			X
+	x, y uint16
 }
 
 type NARPImage struct {
 	NARPixels []NotARegularPixel
 	Size      Point
 	Version   string
+}
+
+func init() {
+	log.SetFlags(log.Lshortfile)
+	log.SetPrefix("(NARPImage):: ")
+	log.SetOutput(os.Stderr)
 }
 
 func drawAndMark(img *image.RGBA, x, y uint16, color color.Color, visited *[][]bool) {
@@ -55,11 +60,14 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	for _, narpixel := range narpimage.NARPixels {
 		//printNARPixel(&narpixel, 5)
 		if !visited[x][y] {
+			printNARPixel(&narpixel, 0)
+			if narpixel.x != x || narpixel.y != y {
+				log.Panicf("mismatched coordinates, is: %v,%v => should be %v,%v", narpixel.x, narpixel.y, x, y)
+			}
 			color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
 			drawAndMark(img, x, y, color, &visited)
 			for h := uint8(0); h < narpixel.HSize; h++ {
 				xH := x + uint16(h)
-				fmt.Println(x, y, xH)
 				drawAndMark(img, xH, y, color, &visited)
 				if narpixel.VSize != nil && len(narpixel.VSize) > 0 {
 					vsize := putBytesToUint16(narpixel.VSize[h])
@@ -72,11 +80,13 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 		}
 		for visited[x][y] {
 			x++
+			log.Print("inner loop", x)
 			if x >= narpimage.Size.X {
 				y++
 				x = 0
 			}
 		}
+		log.Print()
 	}
 
 	f, error := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
@@ -86,25 +96,23 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	defer f.Close()
 	png.Encode(f, img)
 
-	//PrettyPrint(visited)
-
 	return error
 }
 
 func printNARPixel(pixel *NotARegularPixel, hsizeThresh uint8) {
 	if pixel == nil {
-		fmt.Println("printNARPixel: Error, args are nil")
+		log.Panicf("printNARPixel: Error, args are nil")
 	}
-	if pixel.HSize == 0 || pixel.HSize < hsizeThresh {
+	if pixel.HSize < hsizeThresh {
 		return
 	}
 
-	fmt.Println()
-	fmt.Printf("Color: %v, horizontal size: %v, verticals: %v \n", pixel.Color, pixel.HSize, pixel.VSize)
+	s := ""
+	log.Printf("Color: %v, horizontal size: %v, verticals: %v \n", pixel.Color, pixel.HSize, pixel.VSize)
 	for k := uint8(0); k < pixel.HSize+1; k++ {
-		fmt.Printf("X")
+		s += "X"
 	}
-	fmt.Println()
+	log.Printf("X")
 
 	vmax := uint16(0)
 	for k := uint8(0); k < pixel.HSize+1; k++ {
@@ -116,7 +124,7 @@ func printNARPixel(pixel *NotARegularPixel, hsizeThresh uint8) {
 		}
 	}
 	for v := uint16(1); v <= vmax; v++ {
-		s := ""
+		s = ""
 		for k := uint8(0); k < pixel.HSize+1; k++ {
 			if val, ok := pixel.VSize[k]; ok {
 				vs := putBytesToUint16(val)
@@ -127,24 +135,21 @@ func printNARPixel(pixel *NotARegularPixel, hsizeThresh uint8) {
 				}
 			}
 		}
-		fmt.Println(s)
+		log.Printf(s)
 	}
-}
-
-func prettyPrint(v interface{}) {
-	b, _ := json.MarshalIndent(v, "", "  ")
-	println(string(b))
 }
 
 func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) error {
 	reader, err := os.Open(s)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer reader.Close()
 
 	img, err := jpeg.Decode(reader)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 
@@ -157,6 +162,7 @@ func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) er
 func (narpimage *NARPImage) Load(s string) error {
 	file, err := os.Open(s)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer file.Close()
@@ -164,6 +170,10 @@ func (narpimage *NARPImage) Load(s string) error {
 	narpimage.initNARPImage()
 
 	err = gob.NewDecoder(file).Decode(narpimage)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 
 	return err
 }
@@ -171,12 +181,14 @@ func (narpimage *NARPImage) Load(s string) error {
 func (narpimage *NARPImage) Save(s string, overwrite bool) error {
 	if !overwrite {
 		if _, err := os.Stat(s); !os.IsNotExist(err) {
-			return fmt.Errorf("Save: error, file <%s> already exists", s)
+			log.Fatalf("Save: error, file <%s> already exists", s)
+			return err
 		}
 	}
 
 	file, err := os.Create(s)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer file.Close()
@@ -184,6 +196,7 @@ func (narpimage *NARPImage) Save(s string, overwrite bool) error {
 	b := new(bytes.Buffer)
 	err = gob.NewEncoder(b).Encode(narpimage)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	file.Write(b.Bytes())
@@ -208,15 +221,16 @@ func showProgress(curr, max uint16, show bool) {
 	if !show {
 		return
 	}
+
 	progress := float32(curr) / float32(max) * 100.0
-	if int(progress*100)%10 == 0 {
-		fmt.Printf("Progress: %.2f%% \r", progress)
+	if int(progress)%13 == 0 {
+		log.Printf("Progress: %.2f%% \r", progress)
 	}
 }
 
 func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) error {
 	if img == nil {
-		return errors.New("putToNarpImage: Underlying image to construct from is nil")
+		log.Panicln("putToNarpImage: Underlying image to construct from is nil")
 	}
 
 	var visited [][]bool
@@ -226,17 +240,19 @@ func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) e
 	boundsmin.X, boundsmin.Y = uint16(img.Bounds().Min.X), uint16(img.Bounds().Min.Y)
 
 	for y := boundsmin.Y; y < narpimage.Size.Y; y++ {
-		showProgress(y, narpimage.Size.Y-1, true)
+		showProgress(y, narpimage.Size.Y-1, showprogress)
 		for x := boundsmin.X; x < narpimage.Size.X; x++ {
 			if !(visited[x][y]) {
 				narp := getNARP(x, y, img, &visited)
+				narp.x = x
+				narp.y = y
 				narpimage.NARPixels = append(narpimage.NARPixels, *narp)
 			}
 		}
 	}
 
 	if showprogress {
-		fmt.Println()
+		log.Println()
 	}
 
 	return nil
