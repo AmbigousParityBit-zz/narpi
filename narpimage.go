@@ -1,54 +1,23 @@
-package NARPImage
-
 // notaregularpixel package
+package NARPImage
 
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
 	"log"
 	"os"
+	"strconv"
 )
-
-type Point struct {
-	X, Y uint16
-}
-
-type RGBColor struct {
-	R, G, B uint8
-}
-
-type NotARegularPixel struct {
-	HSize uint8             // horizontal flood size
-	Color RGBColor          // color of pixel
-	VSize map[uint8][]uint8 // map has cells with count of vertical pixels of the same color
-	//
-	//	ex.: HSize=3, VSize[2]=[2,1,2] means area of the same color:
-	//		X	X	X
-	//			X
-	//			X
-	//			X
-	x, y uint16
-}
 
 type NARPImage struct {
 	NARPixels []NotARegularPixel
-	Size      Point
+	Size      struct{ X, Y uint16 }
 	Version   string
-}
-
-func init() {
-	log.SetFlags(log.Lshortfile)
-	log.SetPrefix("(NARPImage):: ")
-	log.SetOutput(os.Stderr)
-}
-
-func drawAndMark(img *image.RGBA, x, y uint16, color color.Color, visited *[][]bool) {
-	img.Set(int(x), int(y), color)
-	(*visited)[x][y] = true
 }
 
 func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
@@ -58,15 +27,16 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	x, y := uint16(0), uint16(0)
 
 	for _, narpixel := range narpimage.NARPixels {
-		printNARPixel(&narpixel, 5)
-		if !(visited[x][y]) {
-			printNARPixel(&narpixel, 0)
-			log.Print("inner loop", x)
+		color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
+		//narpixel.Print(fmt.Sprintf("(x:%v,y:%v) ", x, y))
 
-			if narpixel.x != x || narpixel.y != y {
-				log.Panicf("mismatched coordinates, is: %v,%v => should be %v,%v", narpixel.x, narpixel.y, x, y)
-			}
-			color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
+		if !(visited[x][y]) {
+			/*
+				log.Print("inner loop", x)
+				if narpixel.x != x || narpixel.y != y {
+					log.Panicf("mismatched coordinates, is(narpixel): %v,%v => should be %v,%v", narpixel.x, narpixel.y, x, y)
+				}
+			*/
 			drawAndMark(img, x, y, color, &visited)
 			for h := uint8(0); h < narpixel.HSize; h++ {
 				xH := x + uint16(h)
@@ -87,7 +57,7 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 				x = 0
 			}
 		}
-		log.Print()
+		//log.Print()
 	}
 
 	f, error := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
@@ -100,44 +70,24 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	return error
 }
 
-func printNARPixel(pixel *NotARegularPixel, hsizeThresh uint8) {
-	if pixel == nil {
-		log.Panicf("printNARPixel: Error, args are nil")
+func (narpimage *NARPImage) ConstructFromPngFile(s string, showprogress bool) error {
+	reader, err := os.Open(s)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
-	if pixel.HSize < hsizeThresh {
-		return
+	defer reader.Close()
+
+	img, err := png.Decode(reader)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
 
-	s := ""
-	log.Printf("Color: %v, horizontal size: %v, verticals: %v \n", pixel.Color, pixel.HSize, pixel.VSize)
-	for k := uint8(0); k < pixel.HSize+1; k++ {
-		s += "X"
-	}
-	log.Printf("X")
+	narpimage.initNARPImage()
+	narpimage.putToNarpImage(img, showprogress)
 
-	vmax := uint16(0)
-	for k := uint8(0); k < pixel.HSize+1; k++ {
-		if pixel.VSize[k] != nil {
-			vs := putBytesToUint16(pixel.VSize[k])
-			if vs > vmax {
-				vmax = vs
-			}
-		}
-	}
-	for v := uint16(1); v <= vmax; v++ {
-		s = ""
-		for k := uint8(0); k < pixel.HSize+1; k++ {
-			if val, ok := pixel.VSize[k]; ok {
-				vs := putBytesToUint16(val)
-				if vs >= v {
-					s += "X"
-				} else {
-					s += " "
-				}
-			}
-		}
-		log.Printf(s)
-	}
+	return nil
 }
 
 func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) error {
@@ -205,150 +155,37 @@ func (narpimage *NARPImage) Save(s string, overwrite bool) error {
 	return err
 }
 
-func (narpimage *NARPImage) initNARPImage() {
-	narpimage.NARPixels = []NotARegularPixel{}
-	narpimage.Size = Point{0, 0}
-	narpimage.Version = "0.5"
-}
-
-func initVisitedArray(visited *[][]bool, lenX, lenY int) {
-	*visited = make([][]bool, lenX)
-	for k := range *visited {
-		(*visited)[k] = make([]bool, lenY)
+func (narpimage *NARPImage) Print() {
+	s := ""
+	var visited [][]bool
+	if narpimage.NARPixels == nil {
+		s = "nil"
 	}
-}
+	s = strconv.Itoa(len(narpimage.NARPixels))
 
-func showProgress(curr, max uint16, show bool) {
-	if !show {
+	log.Printf("___________________________________________________________________________________________")
+	log.Printf("(NotARegularPixelImage):: size: %v, codec version: %v, pixels (#=%v):", narpimage.Size, narpimage.Version, s)
+	log.Printf("===========================================================================================\n")
+
+	if narpimage.Size.X == 0 || narpimage.Size.Y == 0 {
 		return
 	}
 
-	progress := float32(curr) / float32(max) * 100.0
-	if int(progress)%13 == 0 {
-		log.Printf("Progress: %.2f%% \r", progress)
-	}
-}
+	x, y := 0, 0
+	for _, v := range narpimage.NARPixels {
+		v.Print(fmt.Sprintf("(x:%v,y:%v) ", x+1, y+1))
+		v.markVisited(x, y, &visited, int(narpimage.Size.X), int(narpimage.Size.Y))
+		end := false
 
-func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) error {
-	if img == nil {
-		log.Panicln("putToNarpImage: Underlying image to construct from is nil")
-	}
-
-	var visited [][]bool
-	initVisitedArray(&visited, img.Bounds().Max.X, img.Bounds().Max.Y)
-	narpimage.Size.X, narpimage.Size.Y = uint16(img.Bounds().Max.X), uint16(img.Bounds().Max.Y)
-	var boundsmin Point
-	boundsmin.X, boundsmin.Y = uint16(img.Bounds().Min.X), uint16(img.Bounds().Min.Y)
-
-	for y := boundsmin.Y; y < narpimage.Size.Y; y++ {
-		showProgress(y, narpimage.Size.Y-1, showprogress)
-		for x := boundsmin.X; x < narpimage.Size.X; x++ {
-			if !(visited[x][y]) {
-				if x < 5 && y < 5 {
-					log.Print("putToNarpImage::", x, y)
+		for !end && visited[x][y] {
+			x++
+			if x >= int(narpimage.Size.X) {
+				x = 0
+				y++
+				if y >= int(narpimage.Size.Y) {
+					end = true
 				}
-				narp := getNARP(x, y, img, &visited)
-				narp.x = x
-				narp.y = y
-				if x > 5 {
-					//os.Exit(0)
-				}
-				narpimage.NARPixels = append(narpimage.NARPixels, *narp)
 			}
 		}
 	}
-
-	if showprogress {
-		log.Println()
-	}
-
-	return nil
-}
-
-func getRGBAFFRange(imageClr color.Color) (uint8, uint8, uint8) {
-	r, g, b, _ := imageClr.RGBA()
-	return uint8(r / 257), uint8(g / 257), uint8(b / 257)
-}
-
-func compareColor(imageClr color.Color, narpColor RGBColor) bool {
-	r, g, b := getRGBAFFRange(imageClr)
-	if r == narpColor.R && g == narpColor.G && b == narpColor.B {
-		return true
-	}
-	return false
-}
-
-func getNARP(x uint16, y uint16, img image.Image, visited *[][]bool) (narp *NotARegularPixel) {
-	r, g, b := getRGBAFFRange(img.At(int(x), int(y)))
-	narp = &NotARegularPixel{
-		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGBColor{r, g, b}}
-	hsize := -1
-
-	for xH := x; compareColor(img.At(int(xH), int(y)), narp.Color) && xH < uint16(img.Bounds().Max.X) && hsize < 253; xH++ {
-		if !((*visited)[xH][y]) {
-			(*visited)[xH][y] = true
-			verticals := getVerticalFloodCount(xH, y, img, visited)
-			if verticals != nil {
-				hsize++
-				narp.VSize[uint8(hsize)] = append(narp.VSize[uint8(hsize)], *verticals...)
-			}
-		}
-	}
-	if hsize == -1 {
-		hsize++
-	}
-	narp.HSize = uint8(hsize)
-
-	return narp
-}
-
-func putBytesToUint16(lr []uint8) (v uint16) {
-	if len(lr) == 0 {
-		return 0
-	}
-	if len(lr) == 1 {
-		v = uint16(lr[0])
-	} else {
-		v = uint16(lr[0])
-		v = v << 8
-		v = v + uint16(lr[1])
-	}
-
-	return v
-}
-
-func cutBytesOfUint16(v uint16) (b bool, left uint8, right uint8) {
-	if v > 255 {
-		left := uint8((v & 240) >> 4)
-		right := uint8(v & 15)
-		return true, left, right
-	}
-	return false, 0, 0
-}
-
-func getVerticalFloodCount(x uint16, y uint16, img image.Image, visited *[][]bool) (verticals *[]uint8) {
-	r, g, b := getRGBAFFRange(img.At(int(x), int(y)))
-	color := RGBColor{r, g, b}
-	vsize := uint16(0)
-
-	for yV := y + 1; yV < uint16(img.Bounds().Max.Y) && compareColor(img.At(int(x), int(yV)), color); yV++ {
-		if !((*visited)[x][yV]) {
-			(*visited)[x][yV] = true
-			vsize++
-		}
-	}
-
-	if vsize == 0 {
-		return nil
-	}
-
-	verticals = &[]uint8{}
-	cutOrNot, left, right := cutBytesOfUint16(vsize)
-	if cutOrNot {
-		*verticals = append(*verticals, left)
-		*verticals = append(*verticals, right)
-	} else {
-		*verticals = append(*verticals, uint8(vsize))
-	}
-	return verticals
 }

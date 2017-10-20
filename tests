@@ -1,0 +1,576 @@
+func TestNotARegularPixel_RunesArray(t *testing.T) {
+	type fields struct {
+		HSize uint8
+		Color RGB8
+		VSize map[uint8][]uint8
+		x     uint16
+		y     uint16
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		wantS  [][]rune
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pixel := &NotARegularPixel{
+				HSize: tt.fields.HSize,
+				Color: tt.fields.Color,
+				VSize: tt.fields.VSize,
+				x:     tt.fields.x,
+				y:     tt.fields.y,
+			}
+			if gotS := pixel.RunesArray(); !reflect.DeepEqual(gotS, tt.wantS) {
+				t.Errorf("NotARegularPixel.RunesArray() = %v, want %v", gotS, tt.wantS)
+			}
+		})
+	}
+}
+
+func TestNotARegularPixel_Print(t *testing.T) {
+	type fields struct {
+		HSize uint8
+		Color RGB8
+		VSize map[uint8][]uint8
+		x     uint16
+		y     uint16
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pixel := &NotARegularPixel{
+				HSize: tt.fields.HSize,
+				Color: tt.fields.Color,
+				VSize: tt.fields.VSize,
+				x:     tt.fields.x,
+				y:     tt.fields.y,
+			}
+			pixel.Print()
+		})
+	}
+}
+
+Generated Test_drawAndMark
+Generated TestNARPImage_initNARPImage
+Generated Test_initVisitedArray
+Generated Test_showProgress
+Generated TestNARPImage_putToNarpImage
+Generated Test_getNARP
+Generated Test_putBytesToUint16
+Generated Test_cutBytesOfUint16
+Generated Test_getVerticalFloodCount
+package NARPImage
+
+import (
+	"image"
+	"image/color"
+	"reflect"
+	"testing"
+)
+
+func Test_drawAndMark(t *testing.T) {
+	type args struct {
+		img     *image.RGBA
+		x       uint16
+		y       uint16
+		color   color.Color
+		visited *[][]bool
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			drawAndMark(tt.args.img, tt.args.x, tt.args.y, tt.args.color, tt.args.visited)
+		})
+	}
+}
+
+func TestNARPImage_initNARPImage(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			narpimage.initNARPImage()
+		})
+	}
+}
+
+func Test_initVisitedArray(t *testing.T) {
+	type args struct {
+		visited *[][]bool
+		lenX    int
+		lenY    int
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			initVisitedArray(tt.args.visited, tt.args.lenX, tt.args.lenY)
+		})
+	}
+}
+
+func Test_showProgress(t *testing.T) {
+	type args struct {
+		curr uint16
+		max  uint16
+		show bool
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			showProgress(tt.args.curr, tt.args.max, tt.args.show)
+		})
+	}
+}
+
+func TestNARPImage_putToNarpImage(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	type args struct {
+		img          image.Image
+		showprogress bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			if err := narpimage.putToNarpImage(tt.args.img, tt.args.showprogress); (err != nil) != tt.wantErr {
+				t.Errorf("NARPImage.putToNarpImage(%v, %v) error = %v, wantErr %v", tt.args.img, tt.args.showprogress, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_getNARP(t *testing.T) {
+	type args struct {
+		x       uint16
+		y       uint16
+		img     image.Image
+		visited *[][]bool
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantNarp *NotARegularPixel
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotNarp := getNARP(tt.args.x, tt.args.y, tt.args.img, tt.args.visited); !reflect.DeepEqual(gotNarp, tt.wantNarp) {
+				t.Errorf("getNARP(%v, %v, %v, %v) = %v, want %v", tt.args.x, tt.args.y, tt.args.img, tt.args.visited, gotNarp, tt.wantNarp)
+			}
+		})
+	}
+}
+
+func Test_putBytesToUint16(t *testing.T) {
+	type args struct {
+		lr []uint8
+	}
+	tests := []struct {
+		name  string
+		args  args
+		wantV uint16
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotV := putBytesToUint16(tt.args.lr); gotV != tt.wantV {
+				t.Errorf("putBytesToUint16(%v) = %v, want %v", tt.args.lr, gotV, tt.wantV)
+			}
+		})
+	}
+}
+
+func Test_cutBytesOfUint16(t *testing.T) {
+	type args struct {
+		v uint16
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantB     bool
+		wantLeft  uint8
+		wantRight uint8
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotB, gotLeft, gotRight := cutBytesOfUint16(tt.args.v)
+			if gotB != tt.wantB {
+				t.Errorf("cutBytesOfUint16(%v) gotB = %v, want %v", tt.args.v, gotB, tt.wantB)
+			}
+			if gotLeft != tt.wantLeft {
+				t.Errorf("cutBytesOfUint16(%v) gotLeft = %v, want %v", tt.args.v, gotLeft, tt.wantLeft)
+			}
+			if gotRight != tt.wantRight {
+				t.Errorf("cutBytesOfUint16(%v) gotRight = %v, want %v", tt.args.v, gotRight, tt.wantRight)
+			}
+		})
+	}
+}
+
+func Test_getVerticalFloodCount(t *testing.T) {
+	type args struct {
+		x       uint16
+		y       uint16
+		img     image.Image
+		visited *[][]bool
+	}
+	tests := []struct {
+		name          string
+		args          args
+		wantVerticals *[]uint8
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotVerticals := getVerticalFloodCount(tt.args.x, tt.args.y, tt.args.img, tt.args.visited); !reflect.DeepEqual(gotVerticals, tt.wantVerticals) {
+				t.Errorf("getVerticalFloodCount(%v, %v, %v, %v) = %v, want %v", tt.args.x, tt.args.y, tt.args.img, tt.args.visited, gotVerticals, tt.wantVerticals)
+			}
+		})
+	}
+}
+Generated TestNARPImage_DeconstructToPngFile
+Generated TestNARPImage_ConstructFromJpgFile
+Generated TestNARPImage_Load
+Generated TestNARPImage_Save
+Generated TestNARPImage_Print
+package NARPImage
+
+import (
+	"path"
+	"path/filepath"
+	"reflect"
+	"testing"
+)
+
+func Test_cutBytesOfUint16(t *testing.T) {
+	var bytesCutTests = []struct {
+		in   uint16
+		outB bool
+		outL uint8
+		outR uint8
+	}{
+		{60116, true, 234, 212},
+		{14231, true, 111, 23},
+		{16383, true, 255, 255},
+		{255, false, 255, 255},
+	}
+
+	for _, bt := range bytesCutTests {
+		if outB_, outL_, outR_ := cutBytesOfUint16(bt.in); bt.outB != outB_ &&
+			bt.outL != outL_ && bt.outR != outR_ {
+			t.Fatalf("cutBytesOfUint16(%v) => %v,%v,%v, want %v,%v,%v", bt.in, outB_, outL_, outR_,
+				bt.outB, bt.outL, bt.outR)
+		} else {
+			t.Logf("cutBytesOfUint16(%v) => %v,%v,%v, successfully", bt.in, bt.outB, bt.outL, bt.outR)
+		}
+	}
+}
+
+func Test_putBytesToUint16(t *testing.T) {
+	var bytesPutTests = []struct {
+		in  []uint8
+		out uint16
+	}{
+		{[]uint8{122}, 122},
+		{[]uint8{234, 212}, 60116},
+		{[]uint8{111, 23}, 28439},
+		{[]uint8{255, 255}, 65535},
+	}
+
+	for _, bt := range bytesPutTests {
+		if v := putBytesToUint16(bt.in); v != bt.out {
+			t.Fatalf("putBytesToUint16(%v) => %v, want %v", bt.in, v, bt.out)
+		} else {
+			t.Logf("putBytesToUint16(%v) => %v, successfully", bt.in, bt.out)
+		}
+	}
+}
+
+func getTestImagesFilenames(t *testing.T) []string {
+	filenames, err := filepath.Glob("./testimages/*.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fileNames := []string{}
+	for _, f := range filenames {
+		filename, _ := filepath.Abs(f)
+		extension := path.Ext(filename)
+		if extension == ".jpg" {
+			filename := filename[0:len(filename)-len(extension)] + "."
+			fileNames = append(fileNames, filename)
+		}
+	}
+	return fileNames
+}
+
+func testConstructFromJpgFile(s string, narpimg *NARPImage, t *testing.T) {
+	t.Logf("Constructing NARP image in memory from jpg file <%sjpg>.\n", s)
+	err := narpimg.ConstructFromJpgFile(s+"jpg", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Constructed NARP image in memory from jpg file <%sjpg> ; bounds: %v, %v.\n",
+		s, narpimg.Size.X, narpimg.Size.Y)
+	t.Logf("Number of\n\t\t pixels = %v,\n\t\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
+		int(narpimg.Size.X)*int(narpimg.Size.Y), len(narpimg.NARPixels),
+		100-100*len(narpimg.NARPixels)/(int(narpimg.Size.X)*int(narpimg.Size.Y)))
+}
+
+func testSave(s string, narpimg *NARPImage, t *testing.T) {
+	err := narpimg.Save(s+"narp", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Saved NARP image from memory to file <%snarp>.\n", s)
+}
+
+func testLoad(s string, narpimgAfterLoading *NARPImage, t *testing.T) {
+	err := narpimgAfterLoading.Load(s + "narp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Loaded NARP image from file <%snarp> to memory.\n", s)
+}
+
+func testDeconstructToPngFile(s string, narpimg *NARPImage, t *testing.T) {
+	err := narpimg.DeconstructToPngFile(s + "png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Saved NARP image from memory to file <%spng>.\n", s)
+}
+
+func Test_ImageFiles(t *testing.T) {
+	fileNames := getTestImagesFilenames(t)
+	for _, s := range fileNames {
+		short := filepath.Base(s)
+		narpimg := NARPImage{}
+		narpimgAfterLoading := NARPImage{}
+
+		t.Run("ConstructFromJpgFile::"+short, func(t1 *testing.T) {
+			testConstructFromJpgFile(s, &narpimg, t1)
+		})
+		t.Run("Save::"+short, func(t *testing.T) {
+			testSave(s, &narpimg, t)
+		})
+		t.Run("Load::"+short, func(t *testing.T) {
+			testLoad(s, &narpimgAfterLoading, t)
+
+			if reflect.DeepEqual(narpimg, narpimgAfterLoading) {
+				t.Logf("Loaded NARP image is the same as the previous one in memory, as expected.\n")
+			} else {
+				t.Fatalf("Loaded NARP image is different from the previous one in memory.\n")
+			}
+		})
+		t.Run("DeconstructToPngFile::"+short, func(t *testing.T) {
+			testDeconstructToPngFile(s, &narpimg, t)
+		})
+	}
+}
+
+func TestNARPImage_DeconstructToPngFile(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			if err := narpimage.DeconstructToPngFile(tt.args.s); (err != nil) != tt.wantErr {
+				t.Errorf("NARPImage.DeconstructToPngFile(%v) error = %v, wantErr %v", tt.args.s, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNARPImage_ConstructFromJpgFile(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	type args struct {
+		s            string
+		showprogress bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			if err := narpimage.ConstructFromJpgFile(tt.args.s, tt.args.showprogress); (err != nil) != tt.wantErr {
+				t.Errorf("NARPImage.ConstructFromJpgFile(%v, %v) error = %v, wantErr %v", tt.args.s, tt.args.showprogress, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNARPImage_Load(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			if err := narpimage.Load(tt.args.s); (err != nil) != tt.wantErr {
+				t.Errorf("NARPImage.Load(%v) error = %v, wantErr %v", tt.args.s, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNARPImage_Save(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	type args struct {
+		s         string
+		overwrite bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			if err := narpimage.Save(tt.args.s, tt.args.overwrite); (err != nil) != tt.wantErr {
+				t.Errorf("NARPImage.Save(%v, %v) error = %v, wantErr %v", tt.args.s, tt.args.overwrite, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNARPImage_Print(t *testing.T) {
+	type fields struct {
+		NARPixels []NotARegularPixel
+		Size      struct{ X, Y uint16 }
+		Version   string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+	// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			narpimage := &NARPImage{
+				NARPixels: tt.fields.NARPixels,
+				Size:      tt.fields.Size,
+				Version:   tt.fields.Version,
+			}
+			narpimage.Print()
+		})
+	}
+}

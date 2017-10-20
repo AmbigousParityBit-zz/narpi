@@ -82,6 +82,19 @@ func testConstructFromJpgFile(s string, narpimg *NARPImage, t *testing.T) {
 		100-100*len(narpimg.NARPixels)/(int(narpimg.Size.X)*int(narpimg.Size.Y)))
 }
 
+func testConstructFromPngFile(s string, narpimg *NARPImage, t *testing.T) {
+	t.Logf("Constructing NARP image in memory from png file <%spng>.\n", s)
+	err := narpimg.ConstructFromJpgFile(s+"png", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Constructed NARP image in memory from png file <%spng> ; bounds: %v, %v.\n",
+		s, narpimg.Size.X, narpimg.Size.Y)
+	t.Logf("Number of\n\t\t pixels = %v,\n\t\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
+		int(narpimg.Size.X)*int(narpimg.Size.Y), len(narpimg.NARPixels),
+		100-100*len(narpimg.NARPixels)/(int(narpimg.Size.X)*int(narpimg.Size.Y)))
+}
+
 func testSave(s string, narpimg *NARPImage, t *testing.T) {
 	err := narpimg.Save(s+"narp", true)
 	if err != nil {
