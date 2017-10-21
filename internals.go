@@ -21,6 +21,19 @@ func drawAndMark(img *image.RGBA, x, y uint16, color color.Color, visited *[][]b
 	(*visited)[x][y] = true
 }
 
+func (narp NotARegularPixel) drawNARP(img *image.RGBA, narpx int, narpy int) {
+	s := narp.RunesArray()
+	color := color.RGBA{narp.Color.R, narp.Color.G, narp.Color.B, 255}
+
+	for j := 0; j < len(s[0]); j++ {
+		for i := 0; i < len(s); i++ {
+			if s[i][j] == 'o' {
+				img.Set(narpx+i, narpy+j, color)
+			}
+		}
+	}
+}
+
 func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool, vislenX, vislenY int) {
 	if len(*visited) == 0 || len(*visited) != vislenX || len((*visited)[0]) != vislenX {
 		initVisitedArray(visited, vislenX, vislenY)
@@ -34,7 +47,6 @@ func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool
 			}
 		}
 	}
-
 }
 
 func (narpimage *NARPImage) initNARPImage() {

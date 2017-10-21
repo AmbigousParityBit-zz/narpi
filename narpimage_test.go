@@ -1,13 +1,14 @@
 package NARPImage
 
 import (
+	"log"
 	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
 )
 
-func Test_cutBytesOfUint16(t *testing.T) {
+func TestcutBytesOfUint16(t *testing.T) {
 	var bytesCutTests = []struct {
 		in   uint16
 		outB bool
@@ -26,12 +27,12 @@ func Test_cutBytesOfUint16(t *testing.T) {
 			t.Fatalf("cutBytesOfUint16(%v) => %v,%v,%v, want %v,%v,%v", bt.in, outB_, outL_, outR_,
 				bt.outB, bt.outL, bt.outR)
 		} else {
-			t.Logf("cutBytesOfUint16(%v) => %v,%v,%v, successfully", bt.in, bt.outB, bt.outL, bt.outR)
+			log.Printf("cutBytesOfUint16(%v) => %v,%v,%v, successfully", bt.in, bt.outB, bt.outL, bt.outR)
 		}
 	}
 }
 
-func Test_putBytesToUint16(t *testing.T) {
+func TestputBytesToUint16(t *testing.T) {
 	var bytesPutTests = []struct {
 		in  []uint8
 		out uint16
@@ -46,13 +47,13 @@ func Test_putBytesToUint16(t *testing.T) {
 		if v := putBytesToUint16(bt.in); v != bt.out {
 			t.Fatalf("putBytesToUint16(%v) => %v, want %v", bt.in, v, bt.out)
 		} else {
-			t.Logf("putBytesToUint16(%v) => %v, successfully", bt.in, bt.out)
+			log.Printf("putBytesToUint16(%v) => %v, successfully", bt.in, bt.out)
 		}
 	}
 }
 
-func getTestImagesFilenames(t *testing.T) []string {
-	filenames, err := filepath.Glob("./testimages/*.jpg")
+func getTestImagesFilenames(t *testing.T, ext string) []string {
+	filenames, err := filepath.Glob("./testimages/*." + ext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func getTestImagesFilenames(t *testing.T) []string {
 	for _, f := range filenames {
 		filename, _ := filepath.Abs(f)
 		extension := path.Ext(filename)
-		if extension == ".jpg" {
+		if extension == "."+ext {
 			filename := filename[0:len(filename)-len(extension)] + "."
 			fileNames = append(fileNames, filename)
 		}
@@ -70,27 +71,27 @@ func getTestImagesFilenames(t *testing.T) []string {
 }
 
 func testConstructFromJpgFile(s string, narpimg *NARPImage, t *testing.T) {
-	t.Logf("Constructing NARP image in memory from jpg file <%sjpg>.\n", s)
+	log.Printf("Constructing NARP image in memory from jpg file <%sjpg>.\n", s)
 	err := narpimg.ConstructFromJpgFile(s+"jpg", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Constructed NARP image in memory from jpg file <%sjpg> ; bounds: %v, %v.\n",
+	log.Printf("Constructed NARP image in memory from jpg file <%sjpg> ; bounds: %v, %v.\n",
 		s, narpimg.Size.X, narpimg.Size.Y)
-	t.Logf("Number of\n\t\t pixels = %v,\n\t\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
+	log.Printf("Number of\n\t\t pixels = %v,\n\t\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
 		int(narpimg.Size.X)*int(narpimg.Size.Y), len(narpimg.NARPixels),
 		100-100*len(narpimg.NARPixels)/(int(narpimg.Size.X)*int(narpimg.Size.Y)))
 }
 
 func testConstructFromPngFile(s string, narpimg *NARPImage, t *testing.T) {
-	t.Logf("Constructing NARP image in memory from png file <%spng>.\n", s)
+	log.Printf("Constructing NARP image in memory from png file <%spng>.\n", s)
 	err := narpimg.ConstructFromJpgFile(s+"png", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Constructed NARP image in memory from png file <%spng> ; bounds: %v, %v.\n",
+	log.Printf("Constructed NARP image in memory from png file <%spng> ; bounds: %v, %v.\n",
 		s, narpimg.Size.X, narpimg.Size.Y)
-	t.Logf("Number of\n\t\t pixels = %v,\n\t\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
+	log.Printf("Number of\n\t\t pixels = %v,\n\t\t keys = %v.\nGain in reduction of pixel objects: %v%%.\n",
 		int(narpimg.Size.X)*int(narpimg.Size.Y), len(narpimg.NARPixels),
 		100-100*len(narpimg.NARPixels)/(int(narpimg.Size.X)*int(narpimg.Size.Y)))
 }
@@ -100,7 +101,7 @@ func testSave(s string, narpimg *NARPImage, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Saved NARP image from memory to file <%snarp>.\n", s)
+	log.Printf("Saved NARP image from memory to file <%snarp>.\n", s)
 }
 
 func testLoad(s string, narpimgAfterLoading *NARPImage, t *testing.T) {
@@ -108,7 +109,7 @@ func testLoad(s string, narpimgAfterLoading *NARPImage, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Loaded NARP image from file <%snarp> to memory.\n", s)
+	log.Printf("Loaded NARP image from file <%snarp> to memory.\n", s)
 }
 
 func testDeconstructToPngFile(s string, narpimg *NARPImage, t *testing.T) {
@@ -116,33 +117,53 @@ func testDeconstructToPngFile(s string, narpimg *NARPImage, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Saved NARP image from memory to file <%spng>.\n", s)
+	log.Printf("Saved NARP image from memory to file <%spng>.\n", s)
 }
 
-func Test_ImageFiles(t *testing.T) {
-	fileNames := getTestImagesFilenames(t)
+func testDeconstructToJpgFile(s string, narpimg *NARPImage, t *testing.T) {
+	err := narpimg.DeconstructToJpgFile(s + "jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Printf("Saved NARP image from memory to file <%sjpg>.\n", s)
+}
+
+func TestImageFilesJpgToNARPIToPng(t *testing.T) {
+	fileNames := getTestImagesFilenames(t, "jpg")
 	for _, s := range fileNames {
-		short := filepath.Base(s)
-		narpimg := NARPImage{}
-		narpimgAfterLoading := NARPImage{}
+		t.Run("ConstructFromJpgFile-Save-Load-DeconstructToPngFile::"+filepath.Base(s), func(t *testing.T) {
+			narpimg := NARPImage{}
+			narpimgAfterLoading := NARPImage{}
 
-		t.Run("ConstructFromJpgFile::"+short, func(t1 *testing.T) {
-			testConstructFromJpgFile(s, &narpimg, t1)
-		})
-		t.Run("Save::"+short, func(t *testing.T) {
+			testConstructFromJpgFile(s, &narpimg, t)
 			testSave(s, &narpimg, t)
-		})
-		t.Run("Load::"+short, func(t *testing.T) {
 			testLoad(s, &narpimgAfterLoading, t)
-
 			if reflect.DeepEqual(narpimg, narpimgAfterLoading) {
-				t.Logf("Loaded NARP image is the same as the previous one in memory, as expected.\n")
+				log.Printf("Loaded NARP image is the same as the previous one in memory, as expected.\n")
 			} else {
 				t.Fatalf("Loaded NARP image is different from the previous one in memory.\n")
 			}
+			testDeconstructToPngFile(s, &narpimgAfterLoading, t)
 		})
-		t.Run("DeconstructToPngFile::"+short, func(t *testing.T) {
-			testDeconstructToPngFile(s, &narpimg, t)
+	}
+}
+
+func _TestImageFilesPngToNARPIToJpg(t *testing.T) {
+	fileNames := getTestImagesFilenames(t, "png")
+	for _, s := range fileNames {
+		t.Run("ConstructFromPngFile-Save-Load-DeconstructToJpgFile::"+filepath.Base(s), func(t *testing.T) {
+			narpimg := NARPImage{}
+			narpimgAfterLoading := NARPImage{}
+
+			testConstructFromPngFile(s, &narpimg, t)
+			testSave(s, &narpimg, t)
+			testLoad(s, &narpimgAfterLoading, t)
+			if reflect.DeepEqual(narpimg, narpimgAfterLoading) {
+				log.Printf("Loaded NARP image is the same as the previous one in memory, as expected.\n")
+			} else {
+				t.Fatalf("Loaded NARP image is different from the previous one in memory.\n")
+			}
+			testDeconstructToJpgFile(s, &narpimgAfterLoading, t)
 		})
 	}
 }

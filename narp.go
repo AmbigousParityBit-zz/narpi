@@ -25,11 +25,6 @@ type NotARegularPixel struct {
 func (pixel *NotARegularPixel) RunesArray() (s [][]rune) {
 	hsize := pixel.HSize + 1
 	s = make([][]rune, hsize)
-	if pixel.HSize == 0 {
-		s[0] = make([]rune, 1)
-		s[0][0] = 'o'
-		return s
-	}
 
 	vsize := uint16(0)
 	for i := uint8(0); i < hsize; i++ {
@@ -39,6 +34,9 @@ func (pixel *NotARegularPixel) RunesArray() (s [][]rune) {
 				vsize = v
 			}
 		}
+	}
+	if vsize == 0 {
+		vsize++
 	}
 	for i := uint8(0); i < hsize; i++ {
 		s[i] = make([]rune, vsize)
@@ -74,7 +72,7 @@ func printVerticals(m map[uint8][]uint8) (r string) {
 	}
 
 	if r == "" {
-		r = "nil"
+		r = "empty"
 	}
 	return r
 }
@@ -82,9 +80,9 @@ func printVerticals(m map[uint8][]uint8) (r string) {
 func (pixel *NotARegularPixel) Print(prefix string) {
 	s := pixel.RunesArray()
 
-	log.Printf("______________________________________________________________________________________")
-	log.Printf("(NotARegularPixel):: %vcolor:%v, size(horizontal x max_vertical):%vx%v, verticals: \n%v \n", prefix, pixel.Color, len(s), len(s[0]), printVerticals(pixel.VSize))
-	log.Printf("======================================================================================")
+	log.Printf("--------------------------------------------------------------------------------------")
+	log.Printf("(NotARegularPixel):: %vcolor:%v, hsize:%v, size(runes, human friendly):%vx%v, \n\nvsize:  %v\nverticals(human friendly):  %v\n",
+		prefix, pixel.Color, pixel.HSize, len(s), len(s[0]), pixel.VSize, printVerticals(pixel.VSize))
 
 	for j := 0; j < len(s[0]); j++ {
 		st := ""
@@ -93,17 +91,17 @@ func (pixel *NotARegularPixel) Print(prefix string) {
 		}
 		log.Println(st)
 	}
-	log.Printf("======================================================================================")
+	log.Printf("--------------------------------------------------------------------------------------")
 }
 
-func getRGBA8(imageClr color.Color) (uint8, uint8, uint8) {
-	r, g, b, _ := imageClr.RGBA()
+func getRGBA8(rgba16 color.Color) (uint8, uint8, uint8) {
+	r, g, b, _ := rgba16.RGBA()
 	return uint8(r / 257), uint8(g / 257), uint8(b / 257)
 }
 
-func colorsEqual(imageClr color.Color, narpColor RGB8) bool {
-	r, g, b := getRGBA8(imageClr)
-	if r == narpColor.R && g == narpColor.G && b == narpColor.B {
+func colorsEqual(rgb16 color.Color, rgb8 RGB8) bool {
+	r, g, b := getRGBA8(rgb16)
+	if r == rgb8.R && g == rgb8.G && b == rgb8.B {
 		return true
 	}
 	return false

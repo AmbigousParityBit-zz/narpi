@@ -1,40 +1,42 @@
 package NARPImage
 
 import (
-	"bytes"
 	"image/color"
 	"log"
-	"os"
+	"strings"
 	"testing"
 )
 
-func captureOutput(f func()) string {
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	f()
-	log.SetOutput(os.Stderr)
-	return buf.String()
-}
+func _TestRunesArrayFromTestImages(t *testing.T) {
+	pstfix := []string{
+		"1.png", // 1 - "E"; 2 - "|" on black background
+		"2.png",
+		"1.jpg",
+		"2.jpg",
+	}
 
-func TestRunesArray(t *testing.T) {
 	prf := "./testimages/testrunes/testrunes"
 	narpi := NARPImage{}
 
-	fnm := prf + "1.jpg"
-	err := narpi.ConstructFromJpgFile(fnm, false)
-	if err != nil {
-		t.Fatalf("problem with constructing NARPImage from jpg file")
-	}
-	t.Logf("constructed NARPImage from jpg file <%v>", fnm)
-
-	/*	fnm := prf + "1.png"
-		err := narpi.ConstructFromPngFile(fnm, false)
-		if err != nil {
-			t.Fatalf("problem with constructing NARPImage from png file")
+	for _, v := range pstfix {
+		fnm := prf + v
+		if strings.Index(v, "png") == len(v)-3 {
+			err := narpi.ConstructFromPngFile(fnm, false)
+			if err != nil {
+				t.Fatalf("problem with constructing NARPImage from png file")
+			}
+			log.Printf("constructed NARPImage from png file <%v>", fnm)
+			narpi.Print()
 		}
-		t.Logf("constructed NARPImage from png file <%v>", fnm)
-	*/
-	narpi.Print()
+		if strings.Index(v, "jpg") == len(v)-3 {
+			err := narpi.ConstructFromJpgFile(fnm, false)
+			if err != nil {
+				t.Fatalf("problem with constructing NARPImage from jpg file")
+			}
+			log.Printf("constructed NARPImage from jpg file <%v>", fnm)
+			narpi.Print()
+		}
+	}
 }
 
 func Test_getRGBA8(t *testing.T) {
@@ -111,7 +113,7 @@ func Test_getRGBA8(t *testing.T) {
 			i3 := s3 * 0x101
 			i4 := r.Intn(0xFFFF)
 
-			t.Logf("{\"getRGBA8::\", args{color.RGBA64{0x%v, 0x%v, 0x%v, 0x%v}}, 0x%v, 0x%v, 0x%v},",
+			log.Printf("{\"getRGBA8::\", args{color.RGBA64{0x%v, 0x%v, 0x%v, 0x%v}}, 0x%v, 0x%v, 0x%v},",
 				strconv.FormatInt(int64(i1), 16), strconv.FormatInt(int64(i2), 16), strconv.FormatInt(int64(i3), 16),
 				strconv.FormatInt(int64(i4), 16),
 				strconv.FormatInt(int64(s1), 16), strconv.FormatInt(int64(s2), 16), strconv.FormatInt(int64(s3), 16))
@@ -223,7 +225,7 @@ func Test_colorsEqual(t *testing.T) {
 				}
 			}
 
-			t.Logf("{\"colorsEqual::\", args{color.RGBA64{0x%v, 0x%v, 0x%v, 0x%v}, RGB8{0x%v, 0x%v, 0x%v}}, %v},",
+			log.Printf("{\"colorsEqual::\", args{color.RGBA64{0x%v, 0x%v, 0x%v, 0x%v}, RGB8{0x%v, 0x%v, 0x%v}}, %v},",
 				strconv.FormatInt(int64(i1), 16), strconv.FormatInt(int64(i2), 16), strconv.FormatInt(int64(i3), 16),
 				strconv.FormatInt(int64(i4), 16),
 				strconv.FormatInt(int64(s1), 16), strconv.FormatInt(int64(s2), 16), strconv.FormatInt(int64(s3), 16), o)

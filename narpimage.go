@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"image"
-	"image/color"
 	"image/jpeg"
 	"image/png"
 	"log"
@@ -20,54 +19,96 @@ type NARPImage struct {
 	Version   string
 }
 
-func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
-	img := image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
+func (narpimage *NARPImage) deconstructToImage() (img *image.RGBA, err error) {
+	img = image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
 	var visited [][]bool
 	initVisitedArray(&visited, int(narpimage.Size.X), int(narpimage.Size.Y))
 	x, y := uint16(0), uint16(0)
 
-	for _, narpixel := range narpimage.NARPixels {
-		color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
-		//narpixel.Print(fmt.Sprintf("(x:%v,y:%v) ", x, y))
+	for _, v := range narpimage.NARPixels {
+		v.drawNARP(img, int(x), int(y))
+		v.markVisited(int(x), int(y), &visited, int(narpimage.Size.X), int(narpimage.Size.Y))
+		end := false
 
-		if !(visited[x][y]) {
-			/*
-				log.Print("inner loop", x)
-				if narpixel.x != x || narpixel.y != y {
-					log.Panicf("mismatched coordinates, is(narpixel): %v,%v => should be %v,%v", narpixel.x, narpixel.y, x, y)
+		for !end && visited[x][y] {
+			x++
+			if x >= narpimage.Size.X {
+				x = 0
+				y++
+				if y >= narpimage.Size.Y {
+					end = true
 				}
-			*/
-			drawAndMark(img, x, y, color, &visited)
-			for h := uint8(0); h < narpixel.HSize; h++ {
-				xH := x + uint16(h)
-				drawAndMark(img, xH, y, color, &visited)
-				if narpixel.VSize != nil && len(narpixel.VSize) > 0 {
-					vsize := putBytesToUint16(narpixel.VSize[h])
-					for v := uint16(0); v < vsize; v++ {
-						yV := y + uint16(v)
-						drawAndMark(img, xH, yV, color, &visited)
+			}
+		}
+	}
+	/*
+		for _, narpixel := range narpimage.NARPixels {
+			color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
+
+			if !(visited[x][y]) {
+				drawAndMark(img, x, y, color, &visited)
+				for h := uint8(0); h < narpixel.HSize; h++ {
+					xH := x + uint16(h)
+					drawAndMark(img, xH, y, color, &visited)
+					if narpixel.VSize != nil && len(narpixel.VSize) > 0 {
+						vsize := putBytesToUint16(narpixel.VSize[h])
+						for v := uint16(0); v < vsize; v++ {
+							yV := y + uint16(v)
+							drawAndMark(img, xH, yV, color, &visited)
+						}
 					}
 				}
 			}
-		}
-		for visited[x][y] {
-			x++
-			if x >= narpimage.Size.X {
-				y++
-				x = 0
+			for visited[x][y] {
+				x++
+				if x >= narpimage.Size.X {
+					y++
+					x = 0
+				}
 			}
 		}
-		//log.Print()
-	}
+	*/
+	return img, nil
+}
 
-	f, error := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
-	if error != nil {
-		return error
+func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
+	f, err := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
 	}
 	defer f.Close()
-	png.Encode(f, img)
 
-	return error
+	img, err := narpimage.deconstructToImage()
+	if err != nil {
+		return err
+	}
+	err = png.Encode(f, img)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (narpimage *NARPImage) DeconstructToJpgFile(s string) error {
+	f, err := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	img, err := narpimage.deconstructToImage()
+	if err != nil {
+		return err
+	}
+
+	opt := jpeg.Options{Quality: 100}
+	err = jpeg.Encode(f, img, &opt)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (narpimage *NARPImage) ConstructFromPngFile(s string, showprogress bool) error {
@@ -163,9 +204,9 @@ func (narpimage *NARPImage) Print() {
 	}
 	s = strconv.Itoa(len(narpimage.NARPixels))
 
-	log.Printf("___________________________________________________________________________________________")
+	log.Printf("===========================================================================================")
 	log.Printf("(NotARegularPixelImage):: size: %v, codec version: %v, pixels (#=%v):", narpimage.Size, narpimage.Version, s)
-	log.Printf("===========================================================================================\n")
+	log.Printf("===========================================================================================")
 
 	if narpimage.Size.X == 0 || narpimage.Size.Y == 0 {
 		return
