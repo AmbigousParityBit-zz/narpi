@@ -1,5 +1,5 @@
 //not a regular pixel image
-package NARPImage
+package narpi
 
 import (
 	"fmt"

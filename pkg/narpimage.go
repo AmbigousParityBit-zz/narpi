@@ -1,5 +1,5 @@
-// notaregularpixel package
-package NARPImage
+// not a regular pixels image package
+package narpi
 
 import (
 	"bytes"
@@ -86,15 +86,25 @@ func (narpimage *NARPImage) Jpg(filename string) error {
 	return nil
 }
 
-func (narpimage *NARPImage) LoadPng(filename string, showprogress bool) error {
+func loadPng(filename string) (img image.Image, err error) {
 	reader, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
-		return err
+		return nil, err
 	}
 	defer reader.Close()
 
-	img, err := png.Decode(reader)
+	img, err = png.Decode(reader)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return img, nil
+}
+
+func (narpimage *NARPImage) LoadPng(filename string, showprogress bool) error {
+	img, err := loadPng(filename)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -106,15 +116,25 @@ func (narpimage *NARPImage) LoadPng(filename string, showprogress bool) error {
 	return nil
 }
 
-func (narpimage *NARPImage) LoadJpg(filename string, showprogress bool) error {
+func loadJpg(filename string) (img image.Image, err error) {
 	reader, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
-		return err
+		return nil, err
 	}
 	defer reader.Close()
 
-	img, err := jpeg.Decode(reader)
+	img, err = jpeg.Decode(reader)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return img, nil
+}
+
+func (narpimage *NARPImage) LoadJpg(filename string, showprogress bool) error {
+	img, err := loadJpg(filename)
 	if err != nil {
 		log.Println(err)
 		return err

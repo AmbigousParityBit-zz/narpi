@@ -1,11 +1,12 @@
 // notaregularpixel package
-package NARPImage
+package narpi
 
 import (
 	"image"
 	"image/color"
 	"log"
 	"os"
+	"time"
 )
 
 const FileExt = ".narp"
@@ -14,6 +15,11 @@ func init() {
 	log.SetFlags(log.Lshortfile)
 	log.SetPrefix("(NARPImage):: ")
 	log.SetOutput(os.Stderr)
+}
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
 }
 
 func drawAndMark(img *image.RGBA, x, y uint16, color color.Color, visited *[][]bool) {

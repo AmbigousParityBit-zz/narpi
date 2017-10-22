@@ -1,4 +1,4 @@
-package NARPImage
+package narpi
 
 import (
 	"image/color"
