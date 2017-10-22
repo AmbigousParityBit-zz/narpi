@@ -35,7 +35,7 @@ func (narp NotARegularPixel) drawNARP(img *image.RGBA, narpx int, narpy int) {
 }
 
 func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool, vislenX, vislenY int) {
-	if len(*visited) == 0 || len(*visited) != vislenX || len((*visited)[0]) != vislenX {
+	if len(*visited) == 0 || len(*visited) != vislenX || len((*visited)[0]) != vislenY {
 		initVisitedArray(visited, vislenX, vislenY)
 	}
 

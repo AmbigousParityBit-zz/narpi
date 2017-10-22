@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 type NARPImage struct {
@@ -19,10 +20,11 @@ type NARPImage struct {
 	Version   string
 }
 
-func (narpimage *NARPImage) deconstructToImage() (img *image.RGBA, err error) {
+func (narpimage *NARPImage) rgbaImage() (img *image.RGBA, err error) {
+	defer timeTrack(time.Now(), "rgbaImage")
 	img = image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
 	var visited [][]bool
-	initVisitedArray(&visited, int(narpimage.Size.X), int(narpimage.Size.Y))
+
 	x, y := uint16(0), uint16(0)
 
 	for _, v := range narpimage.NARPixels {
@@ -41,44 +43,17 @@ func (narpimage *NARPImage) deconstructToImage() (img *image.RGBA, err error) {
 			}
 		}
 	}
-	/*
-		for _, narpixel := range narpimage.NARPixels {
-			color := color.RGBA{narpixel.Color.R, narpixel.Color.G, narpixel.Color.B, 255}
-
-			if !(visited[x][y]) {
-				drawAndMark(img, x, y, color, &visited)
-				for h := uint8(0); h < narpixel.HSize; h++ {
-					xH := x + uint16(h)
-					drawAndMark(img, xH, y, color, &visited)
-					if narpixel.VSize != nil && len(narpixel.VSize) > 0 {
-						vsize := putBytesToUint16(narpixel.VSize[h])
-						for v := uint16(0); v < vsize; v++ {
-							yV := y + uint16(v)
-							drawAndMark(img, xH, yV, color, &visited)
-						}
-					}
-				}
-			}
-			for visited[x][y] {
-				x++
-				if x >= narpimage.Size.X {
-					y++
-					x = 0
-				}
-			}
-		}
-	*/
 	return img, nil
 }
 
-func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
-	f, err := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
+func (narpimage *NARPImage) Png(filename string) error {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	img, err := narpimage.deconstructToImage()
+	img, err := narpimage.rgbaImage()
 	if err != nil {
 		return err
 	}
@@ -90,14 +65,14 @@ func (narpimage *NARPImage) DeconstructToPngFile(s string) error {
 	return nil
 }
 
-func (narpimage *NARPImage) DeconstructToJpgFile(s string) error {
-	f, err := os.OpenFile(s, os.O_WRONLY|os.O_CREATE, 0666)
+func (narpimage *NARPImage) Jpg(filename string) error {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	img, err := narpimage.deconstructToImage()
+	img, err := narpimage.rgbaImage()
 	if err != nil {
 		return err
 	}
@@ -111,8 +86,8 @@ func (narpimage *NARPImage) DeconstructToJpgFile(s string) error {
 	return nil
 }
 
-func (narpimage *NARPImage) ConstructFromPngFile(s string, showprogress bool) error {
-	reader, err := os.Open(s)
+func (narpimage *NARPImage) LoadPng(filename string, showprogress bool) error {
+	reader, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -131,8 +106,8 @@ func (narpimage *NARPImage) ConstructFromPngFile(s string, showprogress bool) er
 	return nil
 }
 
-func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) error {
-	reader, err := os.Open(s)
+func (narpimage *NARPImage) LoadJpg(filename string, showprogress bool) error {
+	reader, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -151,8 +126,8 @@ func (narpimage *NARPImage) ConstructFromJpgFile(s string, showprogress bool) er
 	return nil
 }
 
-func (narpimage *NARPImage) Load(s string) error {
-	file, err := os.Open(s)
+func (narpimage *NARPImage) Load(filename string) error {
+	file, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -170,15 +145,15 @@ func (narpimage *NARPImage) Load(s string) error {
 	return err
 }
 
-func (narpimage *NARPImage) Save(s string, overwrite bool) error {
+func (narpimage *NARPImage) Save(filename string, overwrite bool) error {
 	if !overwrite {
-		if _, err := os.Stat(s); !os.IsNotExist(err) {
-			log.Fatalf("Save: error, file <%s> already exists", s)
+		if _, err := os.Stat(filename); !os.IsNotExist(err) {
+			log.Fatalf("Save: error, file <%s> already exists", filename)
 			return err
 		}
 	}
 
-	file, err := os.Create(s)
+	file, err := os.Create(filename)
 	if err != nil {
 		log.Println(err)
 		return err

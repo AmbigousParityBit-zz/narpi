@@ -21,7 +21,7 @@ func _TestRunesArrayFromTestImages(t *testing.T) {
 	for _, v := range pstfix {
 		fnm := prf + v
 		if strings.Index(v, "png") == len(v)-3 {
-			err := narpi.ConstructFromPngFile(fnm, false)
+			err := narpi.LoadPng(fnm, false)
 			if err != nil {
 				t.Fatalf("problem with constructing NARPImage from png file")
 			}
@@ -29,7 +29,7 @@ func _TestRunesArrayFromTestImages(t *testing.T) {
 			narpi.Print()
 		}
 		if strings.Index(v, "jpg") == len(v)-3 {
-			err := narpi.ConstructFromJpgFile(fnm, false)
+			err := narpi.LoadJpg(fnm, false)
 			if err != nil {
 				t.Fatalf("problem with constructing NARPImage from jpg file")
 			}
@@ -39,7 +39,7 @@ func _TestRunesArrayFromTestImages(t *testing.T) {
 	}
 }
 
-func Test_getRGBA8(t *testing.T) {
+func _Test_getRGBA8(t *testing.T) {
 	type args struct {
 		imageClr color.Color
 	}
@@ -135,7 +135,7 @@ func Test_getRGBA8(t *testing.T) {
 	}
 }
 
-func Test_colorsEqual(t *testing.T) {
+func _Test_colorsEqual(t *testing.T) {
 	type args struct {
 		imageClr  color.Color
 		narpColor RGB8
