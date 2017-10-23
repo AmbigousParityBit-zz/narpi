@@ -6,10 +6,12 @@ import (
 	"encoding/gob"
 	"fmt"
 	"image"
+	"image/draw"
 	"image/jpeg"
 	"image/png"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -86,67 +88,38 @@ func (narpimage *NARPImage) Jpg(filename string) error {
 	return nil
 }
 
-func loadPng(filename string) (img image.Image, err error) {
+func loadNotNarpi(filename string) (*image.RGBA, string, error) {
 	reader, err := os.Open(filename)
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		log.Fatal(err)
 	}
 	defer reader.Close()
 
-	img, err = png.Decode(reader)
+	imgd, cinf, err := image.Decode(reader)
 	if err != nil {
-		log.Println(err)
-		return nil, err
+		log.Fatal(err, cinf)
 	}
 
-	return img, nil
+	width := imgd.Bounds().Dx()
+	height := imgd.Bounds().Dy()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	draw.Draw(img, img.Bounds(), imgd, img.Bounds().Min, draw.Src)
+
+	return img, cinf, nil
 }
 
-func (narpimage *NARPImage) LoadPng(filename string, showprogress bool) error {
-	img, err := loadPng(filename)
+func (narpimage *NARPImage) constructFromNotNarpi(filename string, showprogress bool) error {
+	img, cinf, err := loadNotNarpi(filename)
 	if err != nil {
-		log.Println(err)
-		return err
+		log.Fatal(err, cinf)
 	}
-
 	narpimage.initNARPImage()
 	narpimage.putToNarpImage(img, showprogress)
 
 	return nil
 }
 
-func loadJpg(filename string) (img image.Image, err error) {
-	reader, err := os.Open(filename)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	defer reader.Close()
-
-	img, err = jpeg.Decode(reader)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	return img, nil
-}
-
-func (narpimage *NARPImage) LoadJpg(filename string, showprogress bool) error {
-	img, err := loadJpg(filename)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	narpimage.initNARPImage()
-	narpimage.putToNarpImage(img, showprogress)
-
-	return nil
-}
-
-func (narpimage *NARPImage) Load(filename string) error {
+func (narpimage *NARPImage) Load(filename string, showprogress bool) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
@@ -156,10 +129,14 @@ func (narpimage *NARPImage) Load(filename string) error {
 
 	narpimage.initNARPImage()
 
-	err = gob.NewDecoder(file).Decode(narpimage)
-	if err != nil {
-		log.Println(err)
-		return err
+	if filepath.Ext(filename) == FileExt {
+		err = gob.NewDecoder(file).Decode(narpimage)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	} else {
+		narpimage.constructFromNotNarpi(filename, showprogress)
 	}
 
 	return err

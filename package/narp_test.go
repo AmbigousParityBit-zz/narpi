@@ -3,7 +3,6 @@ package narpi
 import (
 	"image/color"
 	"log"
-	"strings"
 	"testing"
 )
 
@@ -20,22 +19,12 @@ func _TestRunesArrayFromTestImages(t *testing.T) {
 
 	for _, v := range pstfix {
 		fnm := prf + v
-		if strings.Index(v, "png") == len(v)-3 {
-			err := narpi.LoadPng(fnm, false)
-			if err != nil {
-				t.Fatalf("problem with constructing NARPImage from png file")
-			}
-			log.Printf("constructed NARPImage from png file <%v>", fnm)
-			narpi.Print()
+		err := narpi.Load(fnm, false)
+		if err != nil {
+			t.Fatalf("problem with constructing NARPImage from file <%s>", fnm)
 		}
-		if strings.Index(v, "jpg") == len(v)-3 {
-			err := narpi.LoadJpg(fnm, false)
-			if err != nil {
-				t.Fatalf("problem with constructing NARPImage from jpg file")
-			}
-			log.Printf("constructed NARPImage from jpg file <%v>", fnm)
-			narpi.Print()
-		}
+		log.Printf("constructed NARPImage from file <%v>", fnm)
+		narpi.Print()
 	}
 }
 
