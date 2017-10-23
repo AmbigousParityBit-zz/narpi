@@ -3,7 +3,6 @@ package narpi
 
 import (
 	"image"
-	"image/color"
 	"log"
 	"os"
 	"time"
@@ -22,19 +21,17 @@ func timeTrack(start time.Time, name string) {
 	log.Printf("%s took %s", name, elapsed)
 }
 
-func drawAndMark(img *image.RGBA, x, y uint16, color color.Color, visited *[][]bool) {
-	img.Set(int(x), int(y), color)
-	(*visited)[x][y] = true
-}
-
 func (narp NotARegularPixel) drawNARP(img *image.RGBA, narpx int, narpy int) {
 	s := narp.RunesArray()
-	color := color.RGBA{narp.Color.R, narp.Color.G, narp.Color.B, 255}
 
 	for j := 0; j < len(s[0]); j++ {
 		for i := 0; i < len(s); i++ {
 			if s[i][j] == 'o' {
-				img.Set(narpx+i, narpy+j, color)
+				firstb := (narpy+j)*img.Stride + (narpx+i)*4
+				img.Pix[firstb] = narp.Color.R
+				img.Pix[firstb+1] = narp.Color.G
+				img.Pix[firstb+2] = narp.Color.B
+				img.Pix[firstb+3] = 255
 			}
 		}
 	}
@@ -68,7 +65,7 @@ func initVisitedArray(visited *[][]bool, lenX, lenY int) {
 	}
 }
 
-func showProgress(curr, max uint16, show bool) {
+func showProgress(curr, max int, show bool) {
 	if !show {
 		return
 	}
@@ -79,7 +76,7 @@ func showProgress(curr, max uint16, show bool) {
 	}
 }
 
-func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) error {
+func (narpimage *NARPImage) putToNarpImage(img *image.RGBA, showprogress bool) error {
 	if img == nil {
 		log.Panicln("putToNarpImage: Underlying image to construct from is nil")
 	}
@@ -88,10 +85,14 @@ func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) e
 
 	narpimage.Size.X, narpimage.Size.Y = uint16(img.Bounds().Max.X), uint16(img.Bounds().Max.Y)
 	boundsmin := struct{ X, Y uint16 }{uint16(img.Bounds().Min.X), uint16(img.Bounds().Min.Y)}
+	sy := int(narpimage.Size.Y)
+	sx := int(narpimage.Size.X)
 
-	for y := boundsmin.Y; y < narpimage.Size.Y; y++ {
-		showProgress(y, narpimage.Size.Y-1, showprogress)
-		for x := boundsmin.X; x < narpimage.Size.X; x++ {
+	for y := int(boundsmin.Y); y < sy; y++ {
+		if showprogress {
+			showProgress(y, int(narpimage.Size.Y)-1, showprogress)
+		}
+		for x := int(boundsmin.X); x < sx; x++ {
 			if len(visited) == 0 || !(visited[x][y]) {
 				narp := getNARP(x, y, img, &visited)
 				narp.markVisited(int(x), int(y), &visited, int(narpimage.Size.X), int(narpimage.Size.Y))
@@ -107,14 +108,21 @@ func (narpimage *NARPImage) putToNarpImage(img image.Image, showprogress bool) e
 	return nil
 }
 
-func getNARP(x uint16, y uint16, img image.Image, visited *[][]bool) (narp *NotARegularPixel) {
-	r, g, b := getRGBA8(img.At(int(x), int(y)))
+func getNARP(x int, y int, img *image.RGBA, visited *[][]bool) (narp *NotARegularPixel) {
+	firstb := x*img.Stride + y*4
+	r := img.Pix[firstb]
+	g := img.Pix[firstb+1]
+	b := img.Pix[firstb+2]
+
+	//r, g, b := getRGBA8(img.At(int(x), int(y)))
 	narp = &NotARegularPixel{
 		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{r, g, b}}
 	hsize := -1
+	maxx := img.Bounds().Max.X
+	l := len(*visited)
 
-	for xH := x; colorsEqual(img.At(int(xH), int(y)), narp.Color) && xH < uint16(img.Bounds().Max.X) && hsize < 253; xH++ {
-		if len(*visited) == 0 || !((*visited)[xH][y]) {
+	for xH := x; colorsEqual(img, xH, y, narp.Color) && xH < maxx && hsize < 253; xH++ {
+		if l == 0 || !((*visited)[xH][y]) {
 			verticals := getVerticalFloodCount(xH, y, img, visited)
 			if verticals != nil {
 				hsize++
@@ -154,12 +162,13 @@ func cutBytesOfUint16(v uint16) (b bool, left uint8, right uint8) {
 	return false, 0, 0
 }
 
-func getVerticalFloodCount(x uint16, y uint16, img image.Image, visited *[][]bool) (verticals *[]uint8) {
+func getVerticalFloodCount(x int, y int, img *image.RGBA, visited *[][]bool) (verticals *[]uint8) {
 	r, g, b := getRGBA8(img.At(int(x), int(y)))
 	color := RGB8{r, g, b}
 	vsize := uint16(0)
+	maxy := img.Bounds().Max.Y
 
-	for yV := y + 1; yV < uint16(img.Bounds().Max.Y) && colorsEqual(img.At(int(x), int(yV)), color); yV++ {
+	for yV := y + 1; yV < maxy && colorsEqual(img, x, yV, color); yV++ {
 		if len(*visited) == 0 || !((*visited)[x][yV]) {
 			vsize++
 		}
