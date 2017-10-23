@@ -2,6 +2,8 @@
 package narpi
 
 import (
+	"bytes"
+	"fmt"
 	"image"
 	"log"
 	"os"
@@ -57,6 +59,7 @@ func (narpimage *NARPImage) init() {
 	narpimage.NARPixels = []NotARegularPixel{}
 	narpimage.Size = struct{ X, Y uint16 }{0, 0}
 	narpimage.Version = "0.6"
+	//narpimage.Colors = map[RGB8]rune{}
 }
 
 func initVisitedArray(visited *[][]bool, lenX, lenY int) {
@@ -90,7 +93,7 @@ func (narpimage *NARPImage) putToNarpImage(img *image.RGBA) error {
 	for y := int(boundsmin.Y); y < sy; y++ {
 		for x := int(boundsmin.X); x < sx; x++ {
 			if lenvis == 0 || !(visited[x][y]) {
-				narp := getNARP(x, y, img, &visited, lenvis)
+				narp := getNARP(x, y, img, &visited, lenvis) //, &narpimage.Colors)
 				narp.markVisited(int(x), int(y), &visited, sx, sy, &lenvis)
 
 				//narpimage.NARPixels = append(narpimage.NARPixels, *narp)
@@ -99,14 +102,16 @@ func (narpimage *NARPImage) putToNarpImage(img *image.RGBA) error {
 			}
 		}
 	}
-	log.Println("time::", time.Since(ss))
+	log.Println("putToNarpImage(inner loop)::", time.Since(ss))
 	log.Println()
 
 	narpimage.NARPixels = narpimage.NARPixels[:counter]
+	//log.Println("Number of colors: ", len(narpimage.Colors))
 
 	return nil
 }
 
+//func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int, colors *map[RGB8]rune) (narp *NotARegularPixel) {
 func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp *NotARegularPixel) {
 	firstb := y*img.Stride + x*4
 	r := img.Pix[firstb]
@@ -115,6 +120,7 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp
 
 	narp = &NotARegularPixel{
 		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{r, g, b}}
+	//(*colors)[narp.Color] = '.'
 	hsize := -1
 	maxx := img.Rect.Max.X
 
@@ -131,6 +137,17 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp
 		hsize++
 	}
 	narp.HSize = uint8(hsize)
+
+	if narp.HSize > 5 {
+		b := new(bytes.Buffer)
+		b.Reset()
+		for v := range narp.VSize {
+			b.WriteByte(v)
+		}
+
+		s := fmt.Sprintf("len=%v   :::   %x", b.Len(), b)
+		narp.Print(s)
+	}
 
 	return narp
 }

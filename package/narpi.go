@@ -20,6 +20,7 @@ type NARPImage struct {
 	NARPixels []NotARegularPixel
 	Size      struct{ X, Y uint16 }
 	Version   string
+	//Colors    map[RGB8]rune
 }
 
 func (narpimage *NARPImage) rgbaImage() (img *image.RGBA, err error) {
