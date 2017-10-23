@@ -37,9 +37,10 @@ func (narp NotARegularPixel) drawNARP(img *image.RGBA, narpx int, narpy int) {
 	}
 }
 
-func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool, vislenX, vislenY int) {
-	if len(*visited) == 0 || len(*visited) != vislenX || len((*visited)[0]) != vislenY {
+func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool, vislenX, vislenY int, lenvis *int) {
+	if *lenvis == 0 || *lenvis != vislenX || len((*visited)[0]) != vislenY {
 		initVisitedArray(visited, vislenX, vislenY)
+		*lenvis = len(*visited)
 	}
 
 	s := narp.RunesArray()
@@ -52,7 +53,7 @@ func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool
 	}
 }
 
-func (narpimage *NARPImage) initNARPImage() {
+func (narpimage *NARPImage) init() {
 	narpimage.NARPixels = []NotARegularPixel{}
 	narpimage.Size = struct{ X, Y uint16 }{0, 0}
 	narpimage.Version = "0.6"
@@ -65,18 +66,8 @@ func initVisitedArray(visited *[][]bool, lenX, lenY int) {
 	}
 }
 
-func showProgress(curr, max int, show bool) {
-	if !show {
-		return
-	}
-
-	progress := float32(curr) / float32(max) * 100.0
-	if int(progress)%13 == 0 {
-		log.Printf("Progress: %.2f%% \r", progress)
-	}
-}
-
-func (narpimage *NARPImage) putToNarpImage(img *image.RGBA, showprogress bool) error {
+func (narpimage *NARPImage) putToNarpImage(img *image.RGBA) error {
+	defer timeTrack(time.Now(), "putToNarpImage")
 	if img == nil {
 		log.Panicln("putToNarpImage: Underlying image to construct from is nil")
 	}
@@ -87,28 +78,36 @@ func (narpimage *NARPImage) putToNarpImage(img *image.RGBA, showprogress bool) e
 	boundsmin := struct{ X, Y uint16 }{uint16(img.Bounds().Min.X), uint16(img.Bounds().Min.Y)}
 	sy := int(narpimage.Size.Y)
 	sx := int(narpimage.Size.X)
+	lenvis := len(visited)
 
+	counter := 0
+	if narpimage.NARPixels == nil || len(narpimage.NARPixels) == 0 {
+		narpimage.NARPixels = make([]NotARegularPixel, sx*sy)
+	}
+
+	log.Println()
+	ss := time.Now()
 	for y := int(boundsmin.Y); y < sy; y++ {
-		if showprogress {
-			showProgress(y, int(narpimage.Size.Y)-1, showprogress)
-		}
 		for x := int(boundsmin.X); x < sx; x++ {
-			if len(visited) == 0 || !(visited[x][y]) {
-				narp := getNARP(x, y, img, &visited)
-				narp.markVisited(int(x), int(y), &visited, int(narpimage.Size.X), int(narpimage.Size.Y))
-				narpimage.NARPixels = append(narpimage.NARPixels, *narp)
+			if lenvis == 0 || !(visited[x][y]) {
+				narp := getNARP(x, y, img, &visited, lenvis)
+				narp.markVisited(int(x), int(y), &visited, sx, sy, &lenvis)
+
+				//narpimage.NARPixels = append(narpimage.NARPixels, *narp)
+				narpimage.NARPixels[counter] = *narp
+				counter++
 			}
 		}
 	}
+	log.Println("time::", time.Since(ss))
+	log.Println()
 
-	if showprogress {
-		log.Println()
-	}
+	narpimage.NARPixels = narpimage.NARPixels[:counter]
 
 	return nil
 }
 
-func getNARP(x int, y int, img *image.RGBA, visited *[][]bool) (narp *NotARegularPixel) {
+func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp *NotARegularPixel) {
 	firstb := y*img.Stride + x*4
 	r := img.Pix[firstb]
 	g := img.Pix[firstb+1]
@@ -118,10 +117,9 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool) (narp *NotARegula
 		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{r, g, b}}
 	hsize := -1
 	maxx := img.Rect.Max.X
-	l := len(*visited)
 
 	for xH := x; xH < maxx && colorsEqual(img, xH, y, narp.Color) && hsize < 253; xH++ {
-		if l == 0 || !((*visited)[xH][y]) {
+		if lenvis == 0 || !((*visited)[xH][y]) {
 			verticals := getVerticalFloodCount(xH, y, img, visited)
 			if verticals != nil {
 				hsize++
@@ -170,9 +168,10 @@ func getVerticalFloodCount(x int, y int, img *image.RGBA, visited *[][]bool) (ve
 	color := RGB8{r, g, b}
 	vsize := uint16(0)
 	maxy := img.Bounds().Max.Y
+	lenvis := len(*visited)
 
 	for yV := y + 1; yV < maxy && colorsEqual(img, x, yV, color); yV++ {
-		if len(*visited) == 0 || !((*visited)[x][yV]) {
+		if lenvis == 0 || !((*visited)[x][yV]) {
 			vsize++
 		}
 	}

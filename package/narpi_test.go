@@ -242,11 +242,11 @@ func _TestImageFilesPngToNARPIToJpg(t *testing.T) {
 			}
 			testDeconstructToJpgFile(s, &narpimgAfterLoading, t)
 
+			log.Println("___")
 			compareJpgPngFiles(t, s)
+			log.Println("---------------------------------------------------------------------------")
+			log.Println()
 		})
-		for _, s := range fileNames {
-			compareJpgPngFiles(t, s)
-		}
+
 	}
-	//Pix[(y-Rect.Min.Y)*Stride + (x-Rect.Min.X)*4]
 }

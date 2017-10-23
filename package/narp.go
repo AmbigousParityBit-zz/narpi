@@ -100,23 +100,10 @@ func getRGBA8(rgba16 color.Color) (uint8, uint8, uint8) {
 	return uint8(r / 257), uint8(g / 257), uint8(b / 257)
 }
 
-/*
-func colorsEqual(rgb16 color.Color, rgb8 RGB8) bool {
-	r, g, b := getRGBA8(rgb16)
-	if r == rgb8.R && g == rgb8.G && b == rgb8.B {
-		return true
-	}
-	return false
-}
-*/
-
 func colorsEqual(img *image.RGBA, x, y int, rgb8 RGB8) bool {
 	firstb := y*img.Stride + x*4
-	r := img.Pix[firstb]
-	g := img.Pix[firstb+1]
-	b := img.Pix[firstb+2]
 
-	if r == rgb8.R && g == rgb8.G && b == rgb8.B {
+	if img.Pix[firstb] == rgb8.R && img.Pix[firstb+1] == rgb8.G && img.Pix[firstb+2] == rgb8.B {
 		return true
 	}
 	return false

@@ -26,12 +26,13 @@ func (narpimage *NARPImage) rgbaImage() (img *image.RGBA, err error) {
 	defer timeTrack(time.Now(), "rgbaImage")
 	img = image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
 	var visited [][]bool
+	lenvis := 0
 
 	x, y := uint16(0), uint16(0)
 
 	for _, v := range narpimage.NARPixels {
 		v.drawNARP(img, int(x), int(y))
-		v.markVisited(int(x), int(y), &visited, int(narpimage.Size.X), int(narpimage.Size.Y))
+		v.markVisited(int(x), int(y), &visited, int(narpimage.Size.X), int(narpimage.Size.Y), &lenvis)
 		end := false
 
 		for !end && visited[x][y] {
@@ -113,8 +114,8 @@ func (narpimage *NARPImage) constructFromNotNarpi(filename string, showprogress 
 	if err != nil {
 		log.Fatal(err, cinf)
 	}
-	narpimage.initNARPImage()
-	narpimage.putToNarpImage(img, showprogress)
+	narpimage.init()
+	narpimage.putToNarpImage(img)
 
 	return nil
 }
@@ -127,7 +128,7 @@ func (narpimage *NARPImage) Load(filename string, showprogress bool) error {
 	}
 	defer file.Close()
 
-	narpimage.initNARPImage()
+	narpimage.init()
 
 	if filepath.Ext(filename) == FileExt {
 		err = gob.NewDecoder(file).Decode(narpimage)
@@ -171,6 +172,7 @@ func (narpimage *NARPImage) Save(filename string, overwrite bool) error {
 func (narpimage *NARPImage) Print() {
 	s := ""
 	var visited [][]bool
+	lenvis := 0
 	if narpimage.NARPixels == nil {
 		s = "nil"
 	}
@@ -187,7 +189,7 @@ func (narpimage *NARPImage) Print() {
 	x, y := 0, 0
 	for _, v := range narpimage.NARPixels {
 		v.Print(fmt.Sprintf("(x:%v,y:%v) ", x+1, y+1))
-		v.markVisited(x, y, &visited, int(narpimage.Size.X), int(narpimage.Size.Y))
+		v.markVisited(x, y, &visited, int(narpimage.Size.X), int(narpimage.Size.Y), &lenvis)
 		end := false
 
 		for !end && visited[x][y] {
