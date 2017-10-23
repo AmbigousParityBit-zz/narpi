@@ -109,19 +109,18 @@ func (narpimage *NARPImage) putToNarpImage(img *image.RGBA, showprogress bool) e
 }
 
 func getNARP(x int, y int, img *image.RGBA, visited *[][]bool) (narp *NotARegularPixel) {
-	firstb := x*img.Stride + y*4
+	firstb := y*img.Stride + x*4
 	r := img.Pix[firstb]
 	g := img.Pix[firstb+1]
 	b := img.Pix[firstb+2]
 
-	//r, g, b := getRGBA8(img.At(int(x), int(y)))
 	narp = &NotARegularPixel{
 		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{r, g, b}}
 	hsize := -1
-	maxx := img.Bounds().Max.X
+	maxx := img.Rect.Max.X
 	l := len(*visited)
 
-	for xH := x; colorsEqual(img, xH, y, narp.Color) && xH < maxx && hsize < 253; xH++ {
+	for xH := x; xH < maxx && colorsEqual(img, xH, y, narp.Color) && hsize < 253; xH++ {
 		if l == 0 || !((*visited)[xH][y]) {
 			verticals := getVerticalFloodCount(xH, y, img, visited)
 			if verticals != nil {
@@ -163,7 +162,11 @@ func cutBytesOfUint16(v uint16) (b bool, left uint8, right uint8) {
 }
 
 func getVerticalFloodCount(x int, y int, img *image.RGBA, visited *[][]bool) (verticals *[]uint8) {
-	r, g, b := getRGBA8(img.At(int(x), int(y)))
+	firstb := y*img.Stride + x*4
+	r := img.Pix[firstb]
+	g := img.Pix[firstb+1]
+	b := img.Pix[firstb+2]
+
 	color := RGB8{r, g, b}
 	vsize := uint16(0)
 	maxy := img.Bounds().Max.Y

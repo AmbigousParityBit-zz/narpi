@@ -111,8 +111,7 @@ func colorsEqual(rgb16 color.Color, rgb8 RGB8) bool {
 */
 
 func colorsEqual(img *image.RGBA, x, y int, rgb8 RGB8) bool {
-	firstb := x*img.Stride + y*4
-	log.Println(x, y, firstb, len(img.Pix))
+	firstb := y*img.Stride + x*4
 	r := img.Pix[firstb]
 	g := img.Pix[firstb+1]
 	b := img.Pix[firstb+2]
