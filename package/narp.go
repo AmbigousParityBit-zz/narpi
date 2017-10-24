@@ -2,10 +2,12 @@
 package narpi
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
 	"log"
+	"math"
 	"sort"
 )
 
@@ -107,4 +109,113 @@ func colorsEqual(img *image.RGBA, x, y int, rgb8 RGB8) bool {
 		return true
 	}
 	return false
+}
+
+func (pixel *NotARegularPixel) ReadBytes(b *bytes.Buffer) {
+	*pixel = NotARegularPixel{
+		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{0, 0, 0}}
+	var err error
+
+	pixel.Color.R, err = b.ReadByte()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	pixel.Color.G, err = b.ReadByte()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	pixel.Color.B, err = b.ReadByte()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	pixel.HSize, err = b.ReadByte()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if pixel.HSize > 0 {
+		pixel.VSize = make(map[uint8][]uint8, pixel.HSize)
+		for i := 0; i < pixel.HSize; i++ {
+			flag, err = b.ReadByte()
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+
+		}
+
+		{
+		}
+		hslice := byte(0)
+		counter := byte(0)
+		flag := byte(0)
+		for i := byte(0); i < pixel.HSize; i = counter*8 + hslice {
+			if len(pixel.VSize[i]) > 1 {
+				flag = flag | byte(math.Pow(2, float64(i)))
+			}
+			hslice++
+			if hslice == 8 {
+				hslice = 0
+				counter++
+				b.WriteByte(flag)
+				flag = 0
+			}
+		}
+
+		for i := byte(0); i < pixel.HSize; i++ {
+			l := len(pixel.VSize[i])
+			if l > 0 {
+				if l > 1 {
+					b.WriteByte()
+				}
+				b.WriteByte(pixel.VSize[i][0])
+				if l > 1 {
+					b.WriteByte(pixel.VSize[i][1])
+				}
+			}
+		}
+	}
+
+	log.Println(pixel.Color, pixel.HSize)
+}
+
+func (pixel *NotARegularPixel) Bytes() (b *bytes.Buffer) {
+	b = new(bytes.Buffer)
+	b.Reset()
+
+	b.WriteByte(pixel.Color.R)
+	b.WriteByte(pixel.Color.G)
+	b.WriteByte(pixel.Color.B)
+	b.WriteByte(pixel.HSize)
+	if pixel.HSize > 0 {
+		hslice := byte(0)
+		counter := byte(0)
+		flag := byte(0)
+		for i := byte(0); i < pixel.HSize; i = counter*8 + hslice {
+			if len(pixel.VSize[i]) > 1 {
+				flag = flag | byte(math.Pow(2, float64(i)))
+			}
+			hslice++
+			if hslice == 8 {
+				hslice = 0
+				counter++
+				b.WriteByte(flag)
+				flag = 0
+			}
+		}
+
+		for i := byte(0); i < pixel.HSize; i++ {
+			l := len(pixel.VSize[i])
+			if l > 0 {
+				b.WriteByte(pixel.VSize[i][0])
+				if l > 1 {
+					b.WriteByte(pixel.VSize[i][1])
+				}
+			}
+		}
+	}
+
+	return b
 }

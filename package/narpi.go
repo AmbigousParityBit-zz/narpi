@@ -19,7 +19,7 @@ import (
 type NARPImage struct {
 	NARPixels []NotARegularPixel
 	Size      struct{ X, Y uint16 }
-	Version   string
+	Codec     string
 	//Colors    map[RGB8]rune
 }
 
@@ -180,7 +180,7 @@ func (narpimage *NARPImage) Print() {
 	s = strconv.Itoa(len(narpimage.NARPixels))
 
 	log.Printf("===========================================================================================")
-	log.Printf("(NotARegularPixelImage):: size: %v, codec version: %v, pixels (#=%v):", narpimage.Size, narpimage.Version, s)
+	log.Printf("(NotARegularPixelImage):: size: %v, codec information: %v, pixels (#=%v):", narpimage.Size, narpimage.Codec, s)
 	log.Printf("===========================================================================================")
 
 	if narpimage.Size.X == 0 || narpimage.Size.Y == 0 {

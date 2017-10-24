@@ -2,7 +2,6 @@
 package narpi
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"log"
@@ -58,7 +57,7 @@ func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool
 func (narpimage *NARPImage) init() {
 	narpimage.NARPixels = []NotARegularPixel{}
 	narpimage.Size = struct{ X, Y uint16 }{0, 0}
-	narpimage.Version = "0.6"
+	narpimage.Codec = "NARPI0.6"
 	//narpimage.Colors = map[RGB8]rune{}
 }
 
@@ -139,14 +138,16 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp
 	narp.HSize = uint8(hsize)
 
 	if narp.HSize > 5 {
-		b := new(bytes.Buffer)
-		b.Reset()
-		for v := range narp.VSize {
-			b.WriteByte(v)
-		}
-
-		s := fmt.Sprintf("len=%v   :::   %x", b.Len(), b)
-		narp.Print(s)
+		b := narp.Bytes()
+		s := fmt.Sprintf(" len=%v   :::   %x  ", b.Len(), b)
+		log.Println()
+		log.Println(s)
+		log.Println()
+		narp1 := NotARegularPixel{}
+		log.Println(narp1)
+		narp1.ReadBytes(b)
+		log.Println(narp1)
+		log.Println()
 	}
 
 	return narp
