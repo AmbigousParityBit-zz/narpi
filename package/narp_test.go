@@ -19,12 +19,12 @@ func _TestRunesArrayFromTestImages(t *testing.T) {
 
 	for _, v := range pstfix {
 		fnm := prf + v
-		err := narpi.Load(fnm, false)
+		err := narpi.Load(fnm)
 		if err != nil {
 			t.Fatalf("problem with constructing NARPImage from file <%s>", fnm)
 		}
 		log.Printf("constructed NARPImage from file <%v>", fnm)
-		narpi.Print()
+		narpi.Print(true)
 	}
 }
 

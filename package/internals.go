@@ -128,20 +128,6 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp
 		hsize++
 	}
 	narp.HSize = uint8(hsize)
-	/*
-		if narp.HSize > 5 {
-			b := narp.Bytes()
-			s := fmt.Sprintf(" len=%v   :::   %x  ", b.Len(), b)
-			log.Println()
-			log.Println(s)
-			log.Println()
-			narp1 := NotARegularPixel{}
-			log.Println(narp1)
-			narp1.ReadBytes(b)
-			log.Println(narp1)
-			log.Println()
-		}
-	*/
 	return narp
 }
 
@@ -170,7 +156,7 @@ func getVerticalFloodCount(x int, y int, img *image.RGBA, visited *[][]bool) (vs
 	maxy := img.Bounds().Max.Y
 	lenvis := len(*visited)
 
-	for yV := y + 1; yV < 255 && yV < maxy && colorsEqual(img, x, yV, color); yV++ {
+	for yV := y + 1; yV-y < 255 && yV < maxy && colorsEqual(img, x, yV, color); yV++ {
 		if lenvis == 0 || !((*visited)[x][yV]) {
 			vsize++
 		}

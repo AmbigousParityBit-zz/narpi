@@ -142,7 +142,7 @@ func testConstructFromFile(s string, narpimg *NARPImage, t *testing.T) {
 
 	_, fn := filepath.Split(s + "jpg")
 	log.Printf("Constructing NARP image in memory from <%s>.\n", fn)
-	err := narpimg.Load(s+"jpg", false)
+	err := narpimg.Load(s + "jpg")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func testLoad(s string, narpimgAfterLoading *NARPImage, t *testing.T) {
 	defer timeTrack(time.Now(), "Load")
 
 	_, fn := filepath.Split(s + "narp")
-	err := narpimgAfterLoading.Load(s+"narp", false)
+	err := narpimgAfterLoading.Load(s + "narp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,6 +211,13 @@ func TestImageFilesJpgToNARPIToPng(t *testing.T) {
 			if reflect.DeepEqual(narpimg, narpimgAfterLoading) {
 				log.Printf("Loaded NARP image is the same as the previous one in memory, as expected.\n")
 			} else {
+				narpimg.Print(false)
+				narpimgAfterLoading.Print(false)
+				i := 2
+				narpimg.NARPixels[i].Print("")
+				narpimgAfterLoading.NARPixels[i].Print("")
+				narpimg.NARPixels[123*i].Print("")
+				narpimgAfterLoading.NARPixels[123*i].Print("")
 				t.Fatalf("Loaded NARP image is different from the previous one in memory.\n")
 			}
 			testDeconstructToPngFile(s, &narpimgAfterLoading, t)
@@ -238,6 +245,8 @@ func _TestImageFilesPngToNARPIToJpg(t *testing.T) {
 			if reflect.DeepEqual(narpimg, narpimgAfterLoading) {
 				log.Printf("Loaded NARP image is the same as the previous one in memory, as expected.\n")
 			} else {
+				narpimg.Print(false)
+				narpimgAfterLoading.Print(false)
 				t.Fatalf("Loaded NARP image is different from the previous one in memory.\n")
 			}
 			testDeconstructToJpgFile(s, &narpimgAfterLoading, t)

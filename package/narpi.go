@@ -3,12 +3,12 @@ package narpi
 
 import (
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,7 +26,7 @@ type NARPImage struct {
 func (narpimage *NARPImage) init() {
 	narpimage.NARPixels = []NotARegularPixel{}
 	narpimage.Size = struct{ X, Y uint16 }{0, 0}
-	narpimage.Codec = "NARPI0.6"
+	narpimage.Codec = "NARPI0.6!"
 	//narpimage.Colors = map[RGB8]rune{}
 }
 
@@ -61,7 +61,6 @@ func (narpimage *NARPImage) BytesBuffer() (b *bytes.Buffer) {
 	b = new(bytes.Buffer)
 
 	b.WriteString(narpimage.Codec)
-	b.WriteRune('!')
 
 	left, right := cutBytesOfUint16(uint16(narpimage.Size.X))
 	b.Write([]uint8{left, right})
@@ -85,14 +84,35 @@ func (narpimage *NARPImage) ReadBytesBuffer(b *bytes.Buffer) error {
 		log.Fatalf(err.Error())
 	}
 
-	v, err := b.ReadByte()
-	narpimage.Size.X = uint16(v)
+	left, err := b.ReadByte()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
-	v, err = b.ReadByte()
-	narpimage.Size.Y = uint16(v)
+	right, err := b.ReadByte()
 	if err != nil {
+		return err
+	}
+	narpimage.Size.X = putBytesToUint16(left, right)
+
+	left, err = b.ReadByte()
+	if err != nil {
+		return err
+	}
+	right, err = b.ReadByte()
+	if err != nil {
+		return err
+	}
+	narpimage.Size.Y = putBytesToUint16(left, right)
+
+	narpimage.NARPixels = make([]NotARegularPixel, 0, int(narpimage.Size.X)*int(narpimage.Size.Y))
+	for err == nil {
+		pixel := NotARegularPixel{}
+		err = pixel.ReadBytesBuffer(b)
+		if err == nil {
+			narpimage.NARPixels = append(narpimage.NARPixels, pixel)
+		}
+	}
+	if err != io.EOF {
 		log.Fatalf(err.Error())
 	}
 
@@ -159,7 +179,7 @@ func loadNotNarpi(filename string) (*image.RGBA, string, error) {
 	return img, cinf, nil
 }
 
-func (narpimage *NARPImage) constructFromNotNarpi(filename string, showprogress bool) error {
+func (narpimage *NARPImage) constructFromNotNarpi(filename string) error {
 	img, cinf, err := loadNotNarpi(filename)
 	if err != nil {
 		log.Fatal(err, cinf)
@@ -170,7 +190,7 @@ func (narpimage *NARPImage) constructFromNotNarpi(filename string, showprogress 
 	return nil
 }
 
-func (narpimage *NARPImage) Load(filename string, showprogress bool) error {
+func (narpimage *NARPImage) Load(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Println(err)
@@ -181,13 +201,20 @@ func (narpimage *NARPImage) Load(filename string, showprogress bool) error {
 	narpimage.init()
 
 	if filepath.Ext(filename) == FileExt {
-		err = gob.NewDecoder(file).Decode(narpimage)
+		//err = gob.NewDecoder(file).Decode(narpimage)
+		var b bytes.Buffer
+		_, err := b.ReadFrom(file)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		err = narpimage.ReadBytesBuffer(&b)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 	} else {
-		narpimage.constructFromNotNarpi(filename, showprogress)
+		narpimage.constructFromNotNarpi(filename)
 	}
 
 	return err
@@ -208,18 +235,20 @@ func (narpimage *NARPImage) Save(filename string, overwrite bool) error {
 	}
 	defer file.Close()
 
-	b := new(bytes.Buffer)
-	err = gob.NewEncoder(b).Encode(narpimage)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	file.Write(b.Bytes())
+	/*
+		b := new(bytes.Buffer)
+		err = gob.NewEncoder(b).Encode(narpimage)
+		if err != nil {
+			log.Println(err)
+			return err
+		}*/
+	//file.Write(b.Bytes())
+	file.Write(narpimage.BytesBuffer().Bytes())
 
 	return err
 }
 
-func (narpimage *NARPImage) Print() {
+func (narpimage *NARPImage) Print(detailed bool) {
 	s := ""
 	var visited [][]bool
 	lenvis := 0
@@ -236,19 +265,21 @@ func (narpimage *NARPImage) Print() {
 		return
 	}
 
-	x, y := 0, 0
-	for _, v := range narpimage.NARPixels {
-		v.Print(fmt.Sprintf("(x:%v,y:%v) ", x+1, y+1))
-		v.markVisited(x, y, &visited, int(narpimage.Size.X), int(narpimage.Size.Y), &lenvis)
-		end := false
+	if detailed {
+		x, y := 0, 0
+		for _, v := range narpimage.NARPixels {
+			v.Print(fmt.Sprintf("(x:%v,y:%v) ", x+1, y+1))
+			v.markVisited(x, y, &visited, int(narpimage.Size.X), int(narpimage.Size.Y), &lenvis)
+			end := false
 
-		for !end && visited[x][y] {
-			x++
-			if x >= int(narpimage.Size.X) {
-				x = 0
-				y++
-				if y >= int(narpimage.Size.Y) {
-					end = true
+			for !end && visited[x][y] {
+				x++
+				if x >= int(narpimage.Size.X) {
+					x = 0
+					y++
+					if y >= int(narpimage.Size.Y) {
+						end = true
+					}
 				}
 			}
 		}

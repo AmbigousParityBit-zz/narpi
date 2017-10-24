@@ -68,7 +68,6 @@ func printVerticals(m map[uint8]uint8) (r string) {
 		r += fmt.Sprintf("%v:%d ", i+1, m[uint8(i)]+1)
 	}
 
-	r = ""
 	if r == "" {
 		r = "empty"
 	}
@@ -107,50 +106,60 @@ func colorsEqual(img *image.RGBA, x, y int, rgb8 RGB8) bool {
 }
 
 func (pixel *NotARegularPixel) ReadBytesBuffer(b *bytes.Buffer) error {
-	*pixel = NotARegularPixel{
-		HSize: 0, VSize: map[uint8]uint8{}, Color: RGB8{0, 0, 0}}
+	pixel.HSize = 0
+	pixel.VSize = map[uint8]uint8{}
+	pixel.Color = RGB8{0, 0, 0}
 	var err error
+
+	//left, err := b.ReadByte()
+	_, err = b.ReadByte()
+	if err != nil {
+		return err
+	}
+	//right, err := b.ReadByte()
+	_, err = b.ReadByte()
+	if err != nil {
+		return err
+	}
+	//psize := putBytesToUint16(left, right)
 
 	pixel.Color.R, err = b.ReadByte()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
 	pixel.Color.G, err = b.ReadByte()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
 	pixel.Color.B, err = b.ReadByte()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
 	pixel.HSize, err = b.ReadByte()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
-	left, err := b.ReadByte()
+	//vsize, err := b.ReadByte()
+	_, err = b.ReadByte()
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
-	right, err := b.ReadByte()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	vsize := putBytesToUint16(left, right)
 
-	if vsize > 0 {
-		for i := byte(0); i < pixel.HSize; i++ {
-			v, err := b.ReadByte()
-			if err != nil {
-				log.Fatalf(err.Error())
-			}
+	//if vsize > 0 {
+	for i := byte(0); i < pixel.HSize+1; i++ {
+		v, err := b.ReadByte()
+		if err != nil {
+			return err
+		}
+		if v > 0 {
 			pixel.VSize[i] = v
 		}
-
 	}
+	//}
 
 	return nil
 }
@@ -163,11 +172,11 @@ func (pixel *NotARegularPixel) BytesBuffer() (b *bytes.Buffer) {
 	bn.WriteByte(pixel.Color.B)
 	bn.WriteByte(pixel.HSize)
 	bn.WriteByte(uint8(len(pixel.VSize)))
-	if pixel.VSize != nil && len(pixel.VSize) > 0 {
-		for i := byte(0); i < pixel.HSize; i++ {
-			bn.WriteByte(pixel.VSize[i])
-		}
+	//	if pixel.VSize != nil && len(pixel.VSize) > 0 {
+	for i := byte(0); i < pixel.HSize+1; i++ {
+		bn.WriteByte(pixel.VSize[i])
 	}
+	//	}
 
 	b = new(bytes.Buffer)
 	left, right := cutBytesOfUint16(uint16(bn.Len()))
