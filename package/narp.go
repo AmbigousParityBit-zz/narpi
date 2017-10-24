@@ -7,16 +7,14 @@ import (
 	"image"
 	"image/color"
 	"log"
-	"math"
-	"sort"
 )
 
 type RGB8 = struct{ R, G, B uint8 }
 
 type NotARegularPixel struct {
-	HSize uint8             // horizontal flood size
-	Color RGB8              // color of pixel
-	VSize map[uint8][]uint8 // map has cells with count of vertical pixels of the same color
+	HSize uint8           // horizontal flood size
+	Color RGB8            // color of pixel
+	VSize map[uint8]uint8 // map has cells with count of vertical pixels of the same color
 	//
 	//	ex.: HSize=3, VSize[2]=[2,1,2] means area of the same color:
 	//		X	X	X
@@ -29,10 +27,10 @@ func (pixel *NotARegularPixel) RunesArray() (s [][]rune) {
 	hsize := pixel.HSize + 1
 	s = make([][]rune, hsize)
 
-	vsize := uint16(0)
+	vsize := uint8(0)
 	for i := uint8(0); i < hsize; i++ {
 		if va, ok := pixel.VSize[i]; ok {
-			v := putBytesToUint16(va) + 1
+			v := va + 1
 			if v > vsize {
 				vsize = v
 			}
@@ -45,11 +43,11 @@ func (pixel *NotARegularPixel) RunesArray() (s [][]rune) {
 		s[i] = make([]rune, vsize)
 	}
 
-	for j := uint16(0); j < vsize; j++ {
+	for j := uint8(0); j < vsize; j++ {
 		for i := uint8(0); i < hsize; i++ {
 			if val, ok := pixel.VSize[i]; ok {
-				vs := putBytesToUint16(val) + 1
-				if j < vs {
+				val++
+				if j < val {
 					s[i][j] = 'o'
 				} else {
 					s[i][j] = '.'
@@ -63,17 +61,14 @@ func (pixel *NotARegularPixel) RunesArray() (s [][]rune) {
 	return s
 }
 
-func printVerticals(m map[uint8][]uint8) (r string) {
-	var keys []int
-	for k := range m {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
+func printVerticals(m map[uint8]uint8) (r string) {
 	r = ""
-	for _, k := range keys {
-		r += fmt.Sprintf("%v:%d ", k+1, putBytesToUint16(m[uint8(k)])+1)
+
+	for i := 0; i < len(m); i++ {
+		r += fmt.Sprintf("%v:%d ", i+1, m[uint8(i)]+1)
 	}
 
+	r = ""
 	if r == "" {
 		r = "empty"
 	}
@@ -111,9 +106,9 @@ func colorsEqual(img *image.RGBA, x, y int, rgb8 RGB8) bool {
 	return false
 }
 
-func (pixel *NotARegularPixel) ReadBytes(b *bytes.Buffer) {
+func (pixel *NotARegularPixel) ReadBytesBuffer(b *bytes.Buffer) error {
 	*pixel = NotARegularPixel{
-		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{0, 0, 0}}
+		HSize: 0, VSize: map[uint8]uint8{}, Color: RGB8{0, 0, 0}}
 	var err error
 
 	pixel.Color.R, err = b.ReadByte()
@@ -136,86 +131,49 @@ func (pixel *NotARegularPixel) ReadBytes(b *bytes.Buffer) {
 		log.Fatalf(err.Error())
 	}
 
-	if pixel.HSize > 0 {
-		pixel.VSize = make(map[uint8][]uint8, pixel.HSize)
-		for i := 0; i < pixel.HSize; i++ {
-			flag, err = b.ReadByte()
+	left, err := b.ReadByte()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	right, err := b.ReadByte()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	vsize := putBytesToUint16(left, right)
+
+	if vsize > 0 {
+		for i := byte(0); i < pixel.HSize; i++ {
+			v, err := b.ReadByte()
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-
+			pixel.VSize[i] = v
 		}
 
-		{
-		}
-		hslice := byte(0)
-		counter := byte(0)
-		flag := byte(0)
-		for i := byte(0); i < pixel.HSize; i = counter*8 + hslice {
-			if len(pixel.VSize[i]) > 1 {
-				flag = flag | byte(math.Pow(2, float64(i)))
-			}
-			hslice++
-			if hslice == 8 {
-				hslice = 0
-				counter++
-				b.WriteByte(flag)
-				flag = 0
-			}
-		}
-
-		for i := byte(0); i < pixel.HSize; i++ {
-			l := len(pixel.VSize[i])
-			if l > 0 {
-				if l > 1 {
-					b.WriteByte()
-				}
-				b.WriteByte(pixel.VSize[i][0])
-				if l > 1 {
-					b.WriteByte(pixel.VSize[i][1])
-				}
-			}
-		}
 	}
 
-	log.Println(pixel.Color, pixel.HSize)
+	return nil
 }
 
-func (pixel *NotARegularPixel) Bytes() (b *bytes.Buffer) {
-	b = new(bytes.Buffer)
-	b.Reset()
+func (pixel *NotARegularPixel) BytesBuffer() (b *bytes.Buffer) {
+	bn := new(bytes.Buffer)
 
-	b.WriteByte(pixel.Color.R)
-	b.WriteByte(pixel.Color.G)
-	b.WriteByte(pixel.Color.B)
-	b.WriteByte(pixel.HSize)
-	if pixel.HSize > 0 {
-		hslice := byte(0)
-		counter := byte(0)
-		flag := byte(0)
-		for i := byte(0); i < pixel.HSize; i = counter*8 + hslice {
-			if len(pixel.VSize[i]) > 1 {
-				flag = flag | byte(math.Pow(2, float64(i)))
-			}
-			hslice++
-			if hslice == 8 {
-				hslice = 0
-				counter++
-				b.WriteByte(flag)
-				flag = 0
-			}
-		}
-
+	bn.WriteByte(pixel.Color.R)
+	bn.WriteByte(pixel.Color.G)
+	bn.WriteByte(pixel.Color.B)
+	bn.WriteByte(pixel.HSize)
+	bn.WriteByte(uint8(len(pixel.VSize)))
+	if pixel.VSize != nil && len(pixel.VSize) > 0 {
 		for i := byte(0); i < pixel.HSize; i++ {
-			l := len(pixel.VSize[i])
-			if l > 0 {
-				b.WriteByte(pixel.VSize[i][0])
-				if l > 1 {
-					b.WriteByte(pixel.VSize[i][1])
-				}
-			}
+			bn.WriteByte(pixel.VSize[i])
 		}
 	}
+
+	b = new(bytes.Buffer)
+	left, right := cutBytesOfUint16(uint16(bn.Len()))
+	b.Write([]uint8{left, right})
+
+	b.Write(bn.Bytes())
 
 	return b
 }

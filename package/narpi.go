@@ -23,6 +23,13 @@ type NARPImage struct {
 	//Colors    map[RGB8]rune
 }
 
+func (narpimage *NARPImage) init() {
+	narpimage.NARPixels = []NotARegularPixel{}
+	narpimage.Size = struct{ X, Y uint16 }{0, 0}
+	narpimage.Codec = "NARPI0.6"
+	//narpimage.Colors = map[RGB8]rune{}
+}
+
 func (narpimage *NARPImage) rgbaImage() (img *image.RGBA, err error) {
 	defer timeTrack(time.Now(), "rgbaImage")
 	img = image.NewRGBA(image.Rect(0, 0, int(narpimage.Size.X), int(narpimage.Size.Y)))
@@ -48,6 +55,48 @@ func (narpimage *NARPImage) rgbaImage() (img *image.RGBA, err error) {
 		}
 	}
 	return img, nil
+}
+
+func (narpimage *NARPImage) BytesBuffer() (b *bytes.Buffer) {
+	b = new(bytes.Buffer)
+
+	b.WriteString(narpimage.Codec)
+	b.WriteRune('!')
+
+	left, right := cutBytesOfUint16(uint16(narpimage.Size.X))
+	b.Write([]uint8{left, right})
+
+	left, right = cutBytesOfUint16(uint16(narpimage.Size.Y))
+	b.Write([]uint8{left, right})
+
+	for _, v := range narpimage.NARPixels {
+		b.Write(v.BytesBuffer().Bytes())
+	}
+
+	return b
+}
+
+func (narpimage *NARPImage) ReadBytesBuffer(b *bytes.Buffer) error {
+	narpimage.init()
+
+	var err error
+	narpimage.Codec, err = b.ReadString(uint8('!'))
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	v, err := b.ReadByte()
+	narpimage.Size.X = uint16(v)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	v, err = b.ReadByte()
+	narpimage.Size.Y = uint16(v)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	return nil
 }
 
 func (narpimage *NARPImage) Png(filename string) error {

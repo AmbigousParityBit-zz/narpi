@@ -2,7 +2,6 @@
 package narpi
 
 import (
-	"fmt"
 	"image"
 	"log"
 	"os"
@@ -52,13 +51,6 @@ func (narp NotARegularPixel) markVisited(narpx int, narpy int, visited *[][]bool
 			}
 		}
 	}
-}
-
-func (narpimage *NARPImage) init() {
-	narpimage.NARPixels = []NotARegularPixel{}
-	narpimage.Size = struct{ X, Y uint16 }{0, 0}
-	narpimage.Codec = "NARPI0.6"
-	//narpimage.Colors = map[RGB8]rune{}
 }
 
 func initVisitedArray(visited *[][]bool, lenX, lenY int) {
@@ -118,17 +110,17 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp
 	b := img.Pix[firstb+2]
 
 	narp = &NotARegularPixel{
-		HSize: 0, VSize: map[uint8][]uint8{}, Color: RGB8{r, g, b}}
+		HSize: 0, VSize: map[uint8]uint8{}, Color: RGB8{r, g, b}}
 	//(*colors)[narp.Color] = '.'
 	hsize := -1
 	maxx := img.Rect.Max.X
 
 	for xH := x; xH < maxx && colorsEqual(img, xH, y, narp.Color) && hsize < 253; xH++ {
 		if lenvis == 0 || !((*visited)[xH][y]) {
-			verticals := getVerticalFloodCount(xH, y, img, visited)
-			if verticals != nil {
+			vsize := getVerticalFloodCount(xH, y, img, visited)
+			if vsize != 0 {
 				hsize++
-				narp.VSize[uint8(hsize)] = append(narp.VSize[uint8(hsize)], *verticals...)
+				narp.VSize[uint8(hsize)] = vsize
 			}
 		}
 	}
@@ -136,75 +128,53 @@ func getNARP(x int, y int, img *image.RGBA, visited *[][]bool, lenvis int) (narp
 		hsize++
 	}
 	narp.HSize = uint8(hsize)
-
-	if narp.HSize > 5 {
-		b := narp.Bytes()
-		s := fmt.Sprintf(" len=%v   :::   %x  ", b.Len(), b)
-		log.Println()
-		log.Println(s)
-		log.Println()
-		narp1 := NotARegularPixel{}
-		log.Println(narp1)
-		narp1.ReadBytes(b)
-		log.Println(narp1)
-		log.Println()
-	}
-
+	/*
+		if narp.HSize > 5 {
+			b := narp.Bytes()
+			s := fmt.Sprintf(" len=%v   :::   %x  ", b.Len(), b)
+			log.Println()
+			log.Println(s)
+			log.Println()
+			narp1 := NotARegularPixel{}
+			log.Println(narp1)
+			narp1.ReadBytes(b)
+			log.Println(narp1)
+			log.Println()
+		}
+	*/
 	return narp
 }
 
-func putBytesToUint16(lr []uint8) (v uint16) {
-	if len(lr) == 0 {
-		return 0
-	}
-	if len(lr) == 1 {
-		v = uint16(lr[0])
-	} else {
-		v = uint16(lr[0])
-		v = v << 8
-		v = v + uint16(lr[1])
-	}
+func putBytesToUint16(l, r uint8) (v uint16) {
+	v = uint16(l)
+	v = v << 8
+	v = v + uint16(r)
 
 	return v
 }
 
-func cutBytesOfUint16(v uint16) (b bool, left uint8, right uint8) {
-	if v > 255 {
-		left := uint8((v & 240) >> 4)
-		right := uint8(v & 15)
-		return true, left, right
-	}
-	return false, 0, 0
+func cutBytesOfUint16(v uint16) (l uint8, r uint8) {
+	l, r = uint8(v>>8), uint8(v&0xff)
+
+	return l, r
 }
 
-func getVerticalFloodCount(x int, y int, img *image.RGBA, visited *[][]bool) (verticals *[]uint8) {
+func getVerticalFloodCount(x int, y int, img *image.RGBA, visited *[][]bool) (vsize uint8) {
 	firstb := y*img.Stride + x*4
 	r := img.Pix[firstb]
 	g := img.Pix[firstb+1]
 	b := img.Pix[firstb+2]
 
 	color := RGB8{r, g, b}
-	vsize := uint16(0)
+	vsize = uint8(0)
 	maxy := img.Bounds().Max.Y
 	lenvis := len(*visited)
 
-	for yV := y + 1; yV < maxy && colorsEqual(img, x, yV, color); yV++ {
+	for yV := y + 1; yV < 255 && yV < maxy && colorsEqual(img, x, yV, color); yV++ {
 		if lenvis == 0 || !((*visited)[x][yV]) {
 			vsize++
 		}
 	}
 
-	if vsize == 0 {
-		return nil
-	}
-
-	verticals = &[]uint8{}
-	cutOrNot, left, right := cutBytesOfUint16(vsize)
-	if cutOrNot {
-		*verticals = append(*verticals, left)
-		*verticals = append(*verticals, right)
-	} else {
-		*verticals = append(*verticals, uint8(vsize))
-	}
-	return verticals
+	return vsize
 }

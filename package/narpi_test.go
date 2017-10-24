@@ -10,46 +10,46 @@ import (
 	"time"
 )
 
-func _TestcutBytesOfUint16(t *testing.T) {
+func _Test_cutBytesOfUint16(t *testing.T) {
 	var bytesCutTests = []struct {
 		in   uint16
-		outB bool
 		outL uint8
 		outR uint8
 	}{
-		{60116, true, 234, 212},
-		{14231, true, 111, 23},
-		{16383, true, 255, 255},
-		{255, false, 255, 255},
+		{60116, 234, 212},
+		{14231, 55, 151},
+		{16383, 255, 255},
+		{255, 255, 255},
 	}
 
 	for _, bt := range bytesCutTests {
-		if outB_, outL_, outR_ := cutBytesOfUint16(bt.in); bt.outB != outB_ &&
-			bt.outL != outL_ && bt.outR != outR_ {
-			t.Fatalf("cutBytesOfUint16(%v) => %v,%v,%v, want %v,%v,%v", bt.in, outB_, outL_, outR_,
-				bt.outB, bt.outL, bt.outR)
+		if outL_, outR_ := cutBytesOfUint16(bt.in); bt.outL != outL_ && bt.outR != outR_ {
+			t.Fatalf("cutBytesOfUint16(%v) => %v,%v, want %v,%v", bt.in, outL_, outR_,
+				bt.outL, bt.outR)
 		} else {
-			log.Printf("cutBytesOfUint16(%v) => %v,%v,%v, successfully", bt.in, bt.outB, bt.outL, bt.outR)
+			log.Printf("cutBytesOfUint16(%v) => %v,%v, successfully", bt.in, bt.outL, bt.outR)
 		}
 	}
 }
 
-func _TestputBytesToUint16(t *testing.T) {
+func _Test_putBytesToUint16(t *testing.T) {
 	var bytesPutTests = []struct {
-		in  []uint8
+		inl uint8
+		inr uint8
 		out uint16
 	}{
-		{[]uint8{122}, 122},
-		{[]uint8{234, 212}, 60116},
-		{[]uint8{111, 23}, 28439},
-		{[]uint8{255, 255}, 65535},
+		{122, 0, 31232},
+		{0, 122, 122},
+		{234, 212, 60116},
+		{111, 23, 28439},
+		{255, 255, 65535},
 	}
 
 	for _, bt := range bytesPutTests {
-		if v := putBytesToUint16(bt.in); v != bt.out {
-			t.Fatalf("putBytesToUint16(%v) => %v, want %v", bt.in, v, bt.out)
+		if v := putBytesToUint16(bt.inl, bt.inr); v != bt.out {
+			t.Fatalf("putBytesToUint16(%v,%v) => %v, want %v", bt.inl, bt.inr, v, bt.out)
 		} else {
-			log.Printf("putBytesToUint16(%v) => %v, successfully", bt.in, bt.out)
+			log.Printf("putBytesToUint16(%v,%v) => %v, successfully", bt.inl, bt.inr, bt.out)
 		}
 	}
 }
