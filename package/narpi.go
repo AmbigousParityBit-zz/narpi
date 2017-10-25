@@ -1,4 +1,5 @@
-// not a regular pixels image package
+// Not A Regular Pixels image package.
+// The aim is to create lossless format strictly for photos, which could be used to shrink filesizes. Work in progress.
 package narpi
 
 import (
@@ -9,6 +10,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,6 +24,8 @@ type NARPImage struct {
 	Codec     string
 	//Colors    map[RGB8]rune
 }
+
+type nImage []byte
 
 func (narpimage *NARPImage) init() {
 	narpimage.NARPixels = []NotARegularPixel{}
@@ -119,6 +123,121 @@ func (narpimage *NARPImage) ReadBytesBuffer(b *bytes.Buffer) error {
 	return nil
 }
 
+func createBuffer(imgp *image.RGBA, filename string) {
+	img := (*imgp)
+	xs := img.Bounds().Dx()
+	ys := img.Bounds().Dy()
+
+	var bR bytes.Buffer
+	var bG bytes.Buffer
+	var bB bytes.Buffer
+	var ba bytes.Buffer
+
+	ctR := uint8(0)
+	ctG := uint8(0)
+	ctB := uint8(0)
+	vR := uint8(img.Pix[0])
+	vG := uint8(img.Pix[1])
+	vB := uint8(img.Pix[2])
+
+	for i := 0; i < xs*ys/4; i++ {
+		if img.Pix[i*4] == vR {
+			ctR++
+		} else {
+			bR.WriteByte(ctR)
+			bR.WriteByte(vR)
+			vR = uint8(img.Pix[i*4])
+			ctR = 0
+		}
+	}
+	if ctR != 0 {
+		bR.WriteByte(ctR)
+		bR.WriteByte(vR)
+	}
+
+	for i := 0; i < xs*ys/4; i++ {
+		if img.Pix[i*4+1] == vG {
+			ctG++
+		} else {
+			bG.WriteByte(ctG)
+			bG.WriteByte(vG)
+			vG = uint8(img.Pix[i*4+1])
+			ctG = 0
+		}
+	}
+	if ctG != 0 {
+		bR.WriteByte(ctG)
+		bR.WriteByte(vG)
+	}
+
+	for i := 0; i < xs*ys/4; i++ {
+		if img.Pix[i*4+2] == vB {
+			ctB++
+		} else {
+			bB.WriteByte(ctB)
+			bB.WriteByte(vB)
+			vB = uint8(img.Pix[i*4+2])
+			ctB = 0
+		}
+	}
+	if ctG != 0 {
+		bR.WriteByte(ctG)
+		bR.WriteByte(vG)
+	}
+
+	ba.WriteByte(uint8(bR.Len()))
+	ba.Write(bR.Bytes())
+	ba.WriteByte(uint8(bG.Len()))
+	ba.Write(bG.Bytes())
+	ba.WriteByte(uint8(bB.Len()))
+	ba.Write(bB.Bytes())
+
+	//log.Println(bR)
+	log.Println(bR.Len())
+	err := ioutil.WriteFile(filename+".raw1", ba.Bytes(), 0666)
+	if err != nil {
+		return
+	}
+
+	// ----------------
+
+}
+
+func getInfo(imgp *image.RGBA, filename string) error {
+	img := (*imgp)
+	xs := img.Bounds().Dx()
+	ys := img.Bounds().Dy()
+
+	err := ioutil.WriteFile(filename+".raw", img.Pix, 0666)
+	if err != nil {
+		return err
+	}
+
+	colors := map[RGB8]int{}
+	for i := 0; i < xs*ys; i += 4 {
+		r, g, b := img.Pix[i], img.Pix[i+1], img.Pix[i+2]
+		color := RGB8{r, g, b}
+		if _, b := colors[color]; b {
+			colors[color]++
+		} else {
+			colors[color] = 1
+		}
+	}
+
+	log.Printf("Colors: %v, size: %vx%v", len(colors), xs, ys)
+	counter := 0
+	for i, v := range colors {
+		counter++
+		if v > 200 {
+			log.Printf("%v\t::: [%v]=\t%v", counter, i, v)
+		}
+	}
+	createBuffer(imgp, filename)
+	log.Fatalf("")
+
+	return nil
+}
+
 func (narpimage *NARPImage) Png(filename string) error {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -175,6 +294,8 @@ func loadNotNarpi(filename string) (*image.RGBA, string, error) {
 	height := imgd.Bounds().Dy()
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(img, img.Bounds(), imgd, img.Bounds().Min, draw.Src)
+
+	err = getInfo(img, filename)
 
 	return img, cinf, nil
 }
