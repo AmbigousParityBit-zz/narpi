@@ -1,6 +1,7 @@
 package libnarpi
 
 import (
+	"bytes"
 	"log"
 	"os"
 	"path"
@@ -118,6 +119,16 @@ func testPngFromNarpi(s1 string, s2 string, t *testing.T) {
 	log.Printf("Converted:: [%s]->[%s]\n", filepath.Base(s1), filepath.Base(s2))
 }
 
+func testJpgFromNarpi(s1 string, s2 string, t *testing.T) {
+	defer timeTrack(time.Now(), "testJpgFromNarpi")
+
+	err := Jpg(s1, s2, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Printf("Converted:: [%s]->[%s]\n", filepath.Base(s1), filepath.Base(s2))
+}
+
 func testToNarpi(s1 string, s2 string, t *testing.T) {
 	defer timeTrack(time.Now(), "testToNarpi")
 
@@ -133,10 +144,105 @@ func testToNarpi(s1 string, s2 string, t *testing.T) {
 	log.Printf("INFO::\t\tNarpi gain in size is:: %.2f%%\n\t\t::%s(%vkB)\n\t\t::%s(%vkB)", gain, filepath.Base(s1), sz1, filepath.Base(s2), sz2)
 }
 
-func TestImageFilesJpgToNARPIToPng(t *testing.T) {
+func TestGenerationOfLightBuffers(t *testing.T) {
+	type args struct {
+		pix        *[]uint8
+		xs         int
+		colorindex uint8
+	}
+	tests := []struct {
+		name string
+		args args
+		want []uint8
+	}{
+		{"", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}, 2, 0},
+			[]uint8{0, 0, 0, 5, 2, 2, 129, 4, 8}},
+
+		{"", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}, 2, 1},
+			[]uint8{0, 0, 0, 5, 129, 3, 2, 2, 5}},
+
+		{"", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+		}{&[]uint8{2, 3, 1, 255, 2, 2, 4, 255, 4, 5, 4, 255, 8, 5, 4, 255}, 2, 2},
+			[]uint8{0, 0, 0, 4, 128, 1, 3, 4}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := createLightBuffer(tt.args.pix, tt.args.xs, tt.args.colorindex)
+			if err != nil {
+				t.Errorf("createLightBuffer() error = %v, wantErr %v", err)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("createLightBuffer() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+}
+
+func TestDrawingOfLightBuffers(t *testing.T) {
+	type args struct {
+		buff *[]uint8
+	}
+	tests := []struct {
+		name string
+		args args
+		want *[]uint8
+	}{
+		{"", struct {
+			buff *[]uint8
+		}{&[]uint8{0, 0, 0, 5, 2, 2, 129, 4, 8, 00, 0, 0, 5, 129, 3, 2, 2, 5, 0, 0, 0, 5, 129, 4, 3, 2, 6}},
+			&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}},
+
+		{"", struct {
+			buff *[]uint8
+		}{&[]uint8{0, 0, 0, 5, 131, 1, 2, 3, 2, 0, 0, 0, 4, 131, 1, 2, 5, 1, 0, 0, 0, 4, 2, 1, 129, 6, 8}},
+			&[]uint8{1, 1, 1, 255, 2, 2, 1, 255, 3, 5, 6, 255, 2, 1, 8, 255}},
+
+		{"", struct {
+			buff *[]uint8
+		}{&[]uint8{0, 0, 0, 2, 4, 1, 0, 0, 0, 2, 4, 1, 0, 0, 0, 2, 4, 1}},
+			&[]uint8{1, 1, 1, 255, 1, 1, 1, 255, 1, 1, 1, 255, 1, 1, 1, 255}},
+
+		{"", struct {
+			buff *[]uint8
+		}{&[]uint8{0, 0, 0, 5, 131, 1, 2, 3, 4, 0, 0, 0, 5, 131, 1, 2, 3, 4, 0, 0, 0, 5, 131, 1, 2, 3, 4}},
+			&[]uint8{1, 1, 1, 255, 2, 2, 2, 255, 3, 3, 3, 255, 4, 4, 4, 255}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bI := bytes.NewBuffer(*tt.args.buff)
+			pix := make([]uint8, len(*tt.want))
+
+			drawLightBuffer(bI, &pix, 0)
+			drawLightBuffer(bI, &pix, 1)
+			drawLightBuffer(bI, &pix, 2)
+
+			if !reflect.DeepEqual(*tt.want, pix) {
+				t.Errorf("drawLightBuffer() = %v, want %v", pix, tt.want)
+			}
+
+		})
+	}
+
+}
+
+func _TestImageFilesJpgToNARPIToPng(t *testing.T) {
 	fileNames := getTestImagesFilenames(t, "jpg")
 	deleteExtFiles(t, "png")
 	deleteExtFiles(t, "raw")
+	deleteExtFiles(t, "narpi")
 	for _, s := range fileNames {
 		t.Run("ConstructFromJpgFile-Save-Load-DeconstructToPngFile::"+filepath.Base(s), func(t *testing.T) {
 			testToNarpi(s+"jpg", s+"narpi", t)
@@ -155,10 +261,11 @@ func _TestImageFilesPngToNARPIToJpg(t *testing.T) {
 	fileNames := getTestImagesFilenames(t, "png")
 	deleteExtFiles(t, "jpg")
 	deleteExtFiles(t, "raw")
+	deleteExtFiles(t, "narpi")
 	for _, s := range fileNames {
 		t.Run("ConstructFromJpgFile-Save-Load-DeconstructToPngFile::"+filepath.Base(s), func(t *testing.T) {
 			testToNarpi(s+"png", s+"narpi", t)
-			testPngFromNarpi(s+"narpi", s+"jpg", t)
+			testJpgFromNarpi(s+"narpi", s+"jpg", t)
 
 			log.Println("___")
 			compareJpgPngFiles(t, s)

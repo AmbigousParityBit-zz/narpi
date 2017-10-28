@@ -16,7 +16,7 @@ import (
 )
 
 const NarpiFileExt = ".narpi"
-const NarpiCodecInformation = "NARPI0.6!"
+const NarpiCodecInformation = "NARPI0.75!"
 
 func timeTrack(start time.Time, name string) {
 	elapsed := time.Since(start)
@@ -29,104 +29,173 @@ func init() {
 	log.SetOutput(os.Stderr)
 }
 
-func createLightBuffer(imgp *image.RGBA, colorindex uint8) (bytes.Buffer, error) {
+func createLightBuffer(pix *[]uint8, xs int, colorindex uint8) ([]uint8, error) {
+	if pix == nil {
+		log.Fatalf("pix argument is nil")
+	}
 	var ba bytes.Buffer
-	var bb bytes.Buffer
-	img := (*imgp)
-	xs := img.Bounds().Dx()
-	ys := img.Bounds().Dy()
+	var bh bytes.Buffer
 
-	ct := uint8(0)
-	v := uint8(img.Pix[0])
+	ys := len(*pix) / 4 / xs
 
-	for i := 0; i < xs*ys; {
-		if img.Pix[i*4+int(colorindex)] == v {
-			ct++
-			i++
+	//log.Println(pix)
+	cts := uint8(1)
+	pv := uint8((*pix)[colorindex])
+	v := uint8(0)
+	eq := true
+
+	for i := 1; i < xs*ys; {
+		//		log.Printf("table index=%v,pv=%v,nv=%v,cts=%v,bh=%v,eq=%v", i*4+int(colorindex), pv, (*pix)[i*4+int(colorindex)],
+		//			cts, bh.Bytes(), eq)
+		v = (*pix)[i*4+int(colorindex)]
+		if i == 1 {
+			eq = pv == v
+		}
+		if pv == v {
+			if !eq {
+				err := ba.WriteByte(127 + uint8(bh.Len()))
+				if err != nil {
+					return ba.Bytes(), err
+				}
+				_, err = ba.Write(bh.Bytes())
+				if err != nil {
+					return ba.Bytes(), err
+				}
+				bh.Reset()
+				eq = true
+				//				log.Printf("ba=%v,eq=%v", ba.Bytes(), eq)
+			}
+			cts++
 		} else {
-			err := ba.WriteByte(ct)
-			if err != nil {
-				return bb, err
+			if eq {
+				err := ba.WriteByte(cts)
+				if err != nil {
+					return ba.Bytes(), err
+				}
+				cts = 1
+				err = ba.WriteByte(pv)
+				if err != nil {
+					return ba.Bytes(), err
+				}
+				eq = false
+			} else {
+				err := bh.WriteByte(pv)
+				if err != nil {
+					return ba.Bytes(), err
+				}
 			}
-			err = ba.WriteByte(v)
-			if err != nil {
-				return bb, err
-			}
-			v = uint8(img.Pix[i*4+int(colorindex)])
-			ct = 0
 		}
+		pv = v
+		i++
 	}
-	if ct != 0 {
-		err := ba.WriteByte(ct)
-		if err != nil {
-			return bb, err
-		}
-		err = ba.WriteByte(v)
-		if err != nil {
-			return bb, err
+
+	if int(cts)*(bh.Len()+1) > 1 {
+		if !eq {
+			err := ba.WriteByte(127 + uint8(bh.Len()) + 1)
+			if err != nil {
+				return ba.Bytes(), err
+			}
+
+			_, err = ba.Write(bh.Bytes())
+			if err != nil {
+				return ba.Bytes(), err
+			}
+
+			err = ba.WriteByte(pv)
+			if err != nil {
+				return ba.Bytes(), err
+			}
+			//log.Printf("ba=%v,eq=%v", ba.Bytes(), eq)
+		} else {
+			err := ba.WriteByte(cts)
+			if err != nil {
+				return ba.Bytes(), err
+			}
+			err = ba.WriteByte(pv)
+			if err != nil {
+				return ba.Bytes(), err
+			}
+			//log.Printf("ba=%v,cts=%v,eq=%v", ba.Bytes(), cts, eq)
 		}
 	}
 
+	var bb bytes.Buffer
 	l := uint32(ba.Len())
-	log.Println("ColorIndex write::", colorindex, l)
+	//log.Println("ColorIndex write::", colorindex, l)
 	err := bb.WriteByte(uint8(l >> 24))
 	if err != nil {
-		return bb, err
+		return bb.Bytes(), err
 	}
 
 	err = bb.WriteByte(uint8(l << 8 >> 24))
 	if err != nil {
-		return bb, err
+		return bb.Bytes(), err
 	}
 
 	err = bb.WriteByte(uint8(l << 16 >> 24))
 	if err != nil {
-		return bb, err
+		return bb.Bytes(), err
 	}
 
 	err = bb.WriteByte(uint8(l << 24 >> 24))
 	if err != nil {
-		return bb, err
+		return bb.Bytes(), err
 	}
 
+	//log.Println("len::", uint8(l>>24), uint8(l<<8>>24), uint8(l<<16>>24), uint8(l<<24>>24))
+	//log.Println("len back::", uint32(uint8(l>>24))<<24|uint32(uint8(l<<8>>24))<<16|uint32(uint8(l<<16>>24))<<8|uint32(uint8(l<<24>>24)))
 	_, err = bb.Write(ba.Bytes())
 	if err != nil {
-		return bb, err
+		return bb.Bytes(), err
 	}
 
-	return bb, nil
+	return bb.Bytes(), nil
 }
 
-func drawLightBuffer(bI *bytes.Buffer, imgp *image.RGBA, colorindex uint8) {
-	img := *imgp
+func drawLightBuffer(bI *bytes.Buffer, pix *[]uint8, colorindex uint8) {
+	//log.Printf("buff=%v", bI.Bytes()[:50])
 
 	v1, err := bI.ReadByte()
 	if err != nil {
-		log.Fatalf("Couldn't read Narpi buffer.")
+		log.Fatalf("Couldn't read Narpi buffer. " + err.Error())
 	}
 	v2, err := bI.ReadByte()
 	if err != nil {
-		log.Fatalf("Couldn't read Narpi buffer.")
+		log.Fatalf("Couldn't read Narpi buffer. " + err.Error())
 	}
 	v3, err := bI.ReadByte()
 	if err != nil {
-		log.Fatalf("Couldn't read Narpi buffer.")
+		log.Fatalf("Couldn't read Narpi buffer. " + err.Error())
 	}
 	v4, err := bI.ReadByte()
 	if err != nil {
-		log.Fatalf("Couldn't read Narpi buffer.")
+		log.Fatalf("Couldn't read Narpi buffer. " + err.Error())
 	}
 
 	l := uint32(v1)<<24 | uint32(v2)<<16 | uint32(v3)<<8 | uint32(v4)
-	log.Println("ColorIndex read::", colorindex, l)
+	//log.Println("ColorIndex read::", colorindex, l)
 	offset := uint32(0)
-	for i := uint32(0); i < uint32(l/2); i++ {
+	for offsetbuff := uint32(0); offsetbuff < uint32(l); {
 		ct, _ := bI.ReadByte()
-		v, _ := bI.ReadByte()
-		for j := uint32(0); j < uint32(ct); j++ {
-			img.Pix[offset*4+uint32(colorindex)] = v
-			img.Pix[offset*4+3] = 255
-			offset++
+		offsetbuff++
+		if ct < 128 {
+			v, _ := bI.ReadByte()
+			offsetbuff++
+			for j := uint32(0); j < uint32(ct); j++ {
+				(*pix)[offset*4+uint32(colorindex)] = v
+				(*pix)[offset*4+3] = 255
+				offset++
+				//log.Printf("ct=%v,v=%v, offset=%v, pix=%v", ct, v, offset, *pix)
+			}
+		} else {
+			for j := uint32(0); j < uint32(ct-127); j++ {
+				v, _ := bI.ReadByte()
+				offsetbuff++
+				(*pix)[offset*4+uint32(colorindex)] = v
+				(*pix)[offset*4+3] = 255
+				offset++
+				//log.Printf("ct=%v,v=%v, offset=%v, pix=%v", ct, v, offset, *pix)
+			}
 		}
 	}
 }
@@ -185,9 +254,9 @@ func getRGBA(filenameIn, filenameOut string, overwrite bool) (*image.RGBA, *os.F
 	ys := uint16(v1)<<8 | uint16(v2)
 
 	img := image.NewRGBA(image.Rect(0, 0, int(xs), int(ys)))
-	drawLightBuffer(&bI, img, 0)
-	drawLightBuffer(&bI, img, 1)
-	drawLightBuffer(&bI, img, 2)
+	drawLightBuffer(&bI, &(img.Pix), 0)
+	drawLightBuffer(&bI, &(img.Pix), 1)
+	drawLightBuffer(&bI, &(img.Pix), 2)
 
 	return img, fileOut, nil
 }
@@ -202,6 +271,7 @@ func Png(filenameIn string, filenameOut string, overwrite bool) error {
 		return err
 	}
 
+	fileOut.Close()
 	return nil
 }
 
@@ -216,6 +286,7 @@ func Jpg(filenameIn string, filenameOut string, overwrite bool) error {
 		return err
 	}
 
+	fileOut.Close()
 	return nil
 }
 
@@ -250,7 +321,7 @@ func Narpi(filenameIn string, filenameOut string, overwrite bool) error {
 	img, _, err := loadNotNarpi(filenameIn)
 
 	var ba bytes.Buffer
-	var bt bytes.Buffer
+	var bt []byte
 
 	_, err = ba.WriteString(NarpiCodecInformation)
 	if err != nil {
@@ -277,22 +348,23 @@ func Narpi(filenameIn string, filenameOut string, overwrite bool) error {
 		return err
 	}
 
-	bt, err = createLightBuffer(img, 0)
-	ba.Write(bt.Bytes())
-	if err != nil {
-		return err
-	}
-	bt, err = createLightBuffer(img, 1)
-	ba.Write(bt.Bytes())
+	bt, err = createLightBuffer(&(img.Pix), img.Stride, 0)
+	ba.Write(bt)
 	if err != nil {
 		return err
 	}
 
-	bt, err = createLightBuffer(img, 2)
+	bt, err = createLightBuffer(&(img.Pix), img.Stride, 1)
+	ba.Write(bt)
 	if err != nil {
 		return err
 	}
-	_, err = ba.Write(bt.Bytes())
+
+	bt, err = createLightBuffer(&(img.Pix), img.Stride, 2)
+	if err != nil {
+		return err
+	}
+	_, err = ba.Write(bt)
 	if err != nil {
 		return err
 	}
