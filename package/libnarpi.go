@@ -29,7 +29,76 @@ func init() {
 	log.SetOutput(os.Stderr)
 }
 
-func createLightBuffer(pix *[]uint8, xs int, colorindex uint8) ([]uint8, error) {
+func writeInfoAndValues(ba *bytes.Buffer, split uint8, info *int, values *bytes.Buffer) (err error) {
+	li, i := 0, 0
+	for *info-int(split) > 0 {
+		err = ba.WriteByte(127 + split)
+		if err != nil {
+			return err
+		}
+
+		for ; i < int(split)+li; i++ {
+			err = ba.WriteByte(values.Bytes()[i])
+			if err != nil {
+				return err
+			}
+		}
+		li = i
+		*info = *info - int(split)
+	}
+
+	if *info > 0 {
+		err = ba.WriteByte(uint8(*info + 127))
+		if err != nil {
+			return err
+		}
+
+		_, err = ba.Write(values.Bytes()[li:])
+		if err != nil {
+			return err
+		}
+	}
+
+	*info = 0
+	values.Reset()
+
+	return nil
+}
+
+func writeInfoAndValue(ba *bytes.Buffer, split uint8, info *int, value uint8) (err error) {
+	for *info-int(split) > 0 {
+		err = ba.WriteByte(split)
+		if err != nil {
+			return err
+		}
+
+		err = ba.WriteByte(value)
+		if err != nil {
+			return err
+		}
+		*info = *info - int(split)
+	}
+
+	if *info > 0 {
+		err = ba.WriteByte(uint8(*info))
+		if err != nil {
+			return err
+		}
+
+		err = ba.WriteByte(value)
+		if err != nil {
+			return err
+		}
+	}
+
+	*info = 1
+	return nil
+}
+
+func createLightBuffer(pix *[]uint8, xs int, colorindex uint8, split uint8) ([]uint8, error) {
+	if split > 127 {
+		log.Fatalf("split argument can't be more than 127")
+	}
 	if pix == nil {
 		log.Fatalf("pix argument is nil")
 	}
@@ -39,111 +108,103 @@ func createLightBuffer(pix *[]uint8, xs int, colorindex uint8) ([]uint8, error) 
 	ys := len(*pix) / 4 / xs
 
 	//log.Println(pix)
-	cts := uint8(1)
-	pv := uint8((*pix)[colorindex])
+	cts := 1
+	ctd := 0
+	ppv := uint8((*pix)[colorindex])
+	pv := uint8((*pix)[4+colorindex])
+	if pv != ppv {
+		ctd++
+		bh.WriteByte(ppv)
+	}
 	v := uint8(0)
-	eq := true
-
-	for i := 1; i < xs*ys; {
-		//		log.Printf("table index=%v,pv=%v,nv=%v,cts=%v,bh=%v,eq=%v", i*4+int(colorindex), pv, (*pix)[i*4+int(colorindex)],
-		//			cts, bh.Bytes(), eq)
+	//eq := true
+	counter := 2
+	var err error
+	for i := 2; i < xs*ys; i++ {
 		v = (*pix)[i*4+int(colorindex)]
-		if i == 1 {
-			eq = pv == v
-		}
-		if pv == v {
-			if !eq {
-				err := ba.WriteByte(127 + uint8(bh.Len()))
+
+		if pv == ppv {
+			if v != pv {
+				cts++
+				counter += int(cts)
+				err = writeInfoAndValue(&ba, split, &cts, pv)
 				if err != nil {
 					return ba.Bytes(), err
 				}
-				_, err = ba.Write(bh.Bytes())
-				if err != nil {
-					return ba.Bytes(), err
-				}
-				bh.Reset()
-				eq = true
-				//				log.Printf("ba=%v,eq=%v", ba.Bytes(), eq)
-			}
-			cts++
-		} else {
-			if eq {
-				err := ba.WriteByte(cts)
-				if err != nil {
-					return ba.Bytes(), err
-				}
-				cts = 1
-				err = ba.WriteByte(pv)
-				if err != nil {
-					return ba.Bytes(), err
-				}
-				eq = false
 			} else {
-				err := bh.WriteByte(pv)
+				cts++
+			}
+		}
+
+		if pv != ppv {
+			if v == pv {
+				counter += ctd
+
+				err = writeInfoAndValues(&ba, split, &ctd, &bh)
+				if err != nil {
+					return ba.Bytes(), err
+				}
+			} else {
+				ctd++
+				err = bh.WriteByte(pv)
 				if err != nil {
 					return ba.Bytes(), err
 				}
 			}
 		}
-		pv = v
-		i++
+
+		//in last iteration keep values, in other way we would lost ppv
+		if i < xs*ys-1 {
+			ppv = pv
+			pv = v
+		}
 	}
 
-	if int(cts)*(bh.Len()+1) > 1 {
-		if !eq {
-			err := ba.WriteByte(127 + uint8(bh.Len()) + 1)
-			if err != nil {
-				return ba.Bytes(), err
-			}
+	if v == pv {
+		cts++
+		counter += int(cts)
+		err = writeInfoAndValue(&ba, split, &cts, v)
+		if err != nil {
+			return ba.Bytes(), err
+		}
+	} else {
+		ctd++
 
-			_, err = ba.Write(bh.Bytes())
-			if err != nil {
-				return ba.Bytes(), err
-			}
+		err = bh.WriteByte(v)
+		if err != nil {
+			return ba.Bytes(), err
+		}
+		counter += ctd
 
-			err = ba.WriteByte(pv)
-			if err != nil {
-				return ba.Bytes(), err
-			}
-			//log.Printf("ba=%v,eq=%v", ba.Bytes(), eq)
-		} else {
-			err := ba.WriteByte(cts)
-			if err != nil {
-				return ba.Bytes(), err
-			}
-			err = ba.WriteByte(pv)
-			if err != nil {
-				return ba.Bytes(), err
-			}
-			//log.Printf("ba=%v,cts=%v,eq=%v", ba.Bytes(), cts, eq)
+		err = writeInfoAndValues(&ba, split, &ctd, &bh)
+		if err != nil {
+			return ba.Bytes(), err
 		}
 	}
 
 	var bb bytes.Buffer
 	l := uint32(ba.Len())
 	//log.Println("ColorIndex write::", colorindex, l)
-	err := bb.WriteByte(uint8(l >> 24))
+
+	bb.WriteByte(uint8(l >> 24))
 	if err != nil {
-		return bb.Bytes(), err
+		return ba.Bytes(), err
+	}
+	bb.WriteByte(uint8(l << 8 >> 24))
+	if err != nil {
+		return ba.Bytes(), err
+	}
+	bb.WriteByte(uint8(l << 16 >> 24))
+	if err != nil {
+		return ba.Bytes(), err
+	}
+	bb.WriteByte(uint8(l << 24 >> 24))
+	if err != nil {
+		return ba.Bytes(), err
 	}
 
-	err = bb.WriteByte(uint8(l << 8 >> 24))
-	if err != nil {
-		return bb.Bytes(), err
-	}
+	counter += 4
 
-	err = bb.WriteByte(uint8(l << 16 >> 24))
-	if err != nil {
-		return bb.Bytes(), err
-	}
-
-	err = bb.WriteByte(uint8(l << 24 >> 24))
-	if err != nil {
-		return bb.Bytes(), err
-	}
-
-	//log.Println("len::", uint8(l>>24), uint8(l<<8>>24), uint8(l<<16>>24), uint8(l<<24>>24))
-	//log.Println("len back::", uint32(uint8(l>>24))<<24|uint32(uint8(l<<8>>24))<<16|uint32(uint8(l<<16>>24))<<8|uint32(uint8(l<<24>>24)))
 	_, err = bb.Write(ba.Bytes())
 	if err != nil {
 		return bb.Bytes(), err
@@ -154,7 +215,6 @@ func createLightBuffer(pix *[]uint8, xs int, colorindex uint8) ([]uint8, error) 
 
 func drawLightBuffer(bI *bytes.Buffer, pix *[]uint8, colorindex uint8) {
 	//log.Printf("buff=%v", bI.Bytes()[:50])
-
 	v1, err := bI.ReadByte()
 	if err != nil {
 		log.Fatalf("Couldn't read Narpi buffer. " + err.Error())
@@ -175,7 +235,7 @@ func drawLightBuffer(bI *bytes.Buffer, pix *[]uint8, colorindex uint8) {
 	l := uint32(v1)<<24 | uint32(v2)<<16 | uint32(v3)<<8 | uint32(v4)
 	//log.Println("ColorIndex read::", colorindex, l)
 	offset := uint32(0)
-	for offsetbuff := uint32(0); offsetbuff < uint32(l); {
+	for offsetbuff := uint32(0); offsetbuff < l; {
 		ct, _ := bI.ReadByte()
 		offsetbuff++
 		if ct < 128 {
@@ -185,7 +245,6 @@ func drawLightBuffer(bI *bytes.Buffer, pix *[]uint8, colorindex uint8) {
 				(*pix)[offset*4+uint32(colorindex)] = v
 				(*pix)[offset*4+3] = 255
 				offset++
-				//log.Printf("ct=%v,v=%v, offset=%v, pix=%v", ct, v, offset, *pix)
 			}
 		} else {
 			for j := uint32(0); j < uint32(ct-127); j++ {
@@ -194,7 +253,6 @@ func drawLightBuffer(bI *bytes.Buffer, pix *[]uint8, colorindex uint8) {
 				(*pix)[offset*4+uint32(colorindex)] = v
 				(*pix)[offset*4+3] = 255
 				offset++
-				//log.Printf("ct=%v,v=%v, offset=%v, pix=%v", ct, v, offset, *pix)
 			}
 		}
 	}
@@ -348,19 +406,19 @@ func Narpi(filenameIn string, filenameOut string, overwrite bool) error {
 		return err
 	}
 
-	bt, err = createLightBuffer(&(img.Pix), img.Stride, 0)
-	ba.Write(bt)
+	bt, err = createLightBuffer(&(img.Pix), img.Stride, 0, 127)
+	_, err = ba.Write(bt)
 	if err != nil {
 		return err
 	}
 
-	bt, err = createLightBuffer(&(img.Pix), img.Stride, 1)
-	ba.Write(bt)
+	bt, err = createLightBuffer(&(img.Pix), img.Stride, 1, 127)
+	_, err = ba.Write(bt)
 	if err != nil {
 		return err
 	}
 
-	bt, err = createLightBuffer(&(img.Pix), img.Stride, 2)
+	bt, err = createLightBuffer(&(img.Pix), img.Stride, 2, 127)
 	if err != nil {
 		return err
 	}
@@ -374,10 +432,10 @@ func Narpi(filenameIn string, filenameOut string, overwrite bool) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(filenameOut+".raw", img.Pix, 0666)
-	if err != nil {
-		return err
-	}
-
+	/*	err = ioutil.WriteFile(filenameOut+".raw", img.Pix, 0666)
+		if err != nil {
+			return err
+		}
+	*/
 	return nil
 }

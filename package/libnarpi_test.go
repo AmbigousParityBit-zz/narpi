@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -13,7 +14,7 @@ import (
 
 func getTestImagesFilenames(t *testing.T, ext string) []string {
 	//defer timeTrack(time.Now(), "getTestImagesFilenames")
-	filenames, err := filepath.Glob("./testimages/*." + ext)
+	filenames, err := filepath.Glob("/mnt/ramdisk/*." + ext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,6 +150,7 @@ func TestGenerationOfLightBuffers(t *testing.T) {
 		pix        *[]uint8
 		xs         int
 		colorindex uint8
+		split      uint8
 	}
 	tests := []struct {
 		name string
@@ -159,32 +161,121 @@ func TestGenerationOfLightBuffers(t *testing.T) {
 			pix        *[]uint8
 			xs         int
 			colorindex uint8
-		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}, 2, 0},
+			split      uint8
+		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}, 2, 0, 127},
 			[]uint8{0, 0, 0, 5, 2, 2, 129, 4, 8}},
 
 		{"", struct {
 			pix        *[]uint8
 			xs         int
 			colorindex uint8
-		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}, 2, 1},
+			split      uint8
+		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 4, 5, 6, 255, 8, 5, 6, 255}, 2, 1, 127},
 			[]uint8{0, 0, 0, 5, 129, 3, 2, 2, 5}},
 
 		{"", struct {
 			pix        *[]uint8
 			xs         int
 			colorindex uint8
-		}{&[]uint8{2, 3, 1, 255, 2, 2, 4, 255, 4, 5, 4, 255, 8, 5, 4, 255}, 2, 2},
+			split      uint8
+		}{&[]uint8{2, 3, 1, 255, 2, 2, 4, 255, 4, 5, 4, 255, 8, 5, 4, 255}, 2, 2, 127},
 			[]uint8{0, 0, 0, 4, 128, 1, 3, 4}},
+
+		{"split=6", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+			split      uint8
+		}{&[]uint8{2, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			2, 3, 1, 255,
+			3, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			3, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			1, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255}, 2, 0, 6},
+			[]uint8{0, 0, 0, 19, 2, 2, 133, 4, 8, 2, 3, 4, 8, 133, 3, 2, 4, 8, 1, 2, 129, 4, 8}},
+
+		{"split=6", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+			split      uint8
+		}{&[]uint8{2, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			2, 3, 1, 255,
+			3, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			3, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			1, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255}, 2, 2, 6},
+			[]uint8{0, 0, 0, 16, 128, 1, 3, 4, 128, 1, 3, 4, 128, 1, 3, 4, 128, 1, 3, 4}},
+
+		{"split=6", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+			split      uint8
+		}{&[]uint8{2, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			2, 3, 1, 255,
+			3, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			3, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255,
+			1, 3, 1, 255,
+			2, 2, 4, 255,
+			4, 5, 4, 255,
+			8, 5, 4, 255}, 2, 1, 6},
+			[]uint8{0, 0, 0, 20, 129, 3, 2, 2, 5, 129, 3, 2, 2, 5, 129, 3, 2, 2, 5, 129, 3, 2, 2, 5}},
+
+		{"split=2", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+			split      uint8
+		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 2, 5, 6, 255, 8, 5, 6, 255}, 2, 0, 2},
+			[]uint8{0, 0, 0, 6, 2, 2, 1, 2, 128, 8}},
+
+		{"split=2", struct {
+			pix        *[]uint8
+			xs         int
+			colorindex uint8
+			split      uint8
+		}{&[]uint8{2, 3, 4, 255, 2, 2, 3, 255, 2, 5, 6, 255, 2, 5, 6, 255}, 2, 0, 2},
+			[]uint8{0, 0, 0, 4, 2, 2, 2, 2}},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createLightBuffer(tt.args.pix, tt.args.xs, tt.args.colorindex)
+			got, err := createLightBuffer(tt.args.pix, tt.args.xs, tt.args.colorindex, tt.args.split)
 			if err != nil {
 				t.Errorf("createLightBuffer() error = %v, wantErr %v", err)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("createLightBuffer() = %v, want %v", got, tt.want)
+				t.Errorf("createLightBuffer() = %v, want %v, split=%v,colorIndex=%v\t::pix=%v", got, tt.want, tt.args.split, tt.args.colorindex, tt.args.pix)
 			}
 		})
 	}
@@ -238,15 +329,19 @@ func TestDrawingOfLightBuffers(t *testing.T) {
 
 }
 
-func _TestImageFilesJpgToNARPIToPng(t *testing.T) {
+func TestImageFilesJpgToNARPIToPng(t *testing.T) {
 	fileNames := getTestImagesFilenames(t, "jpg")
 	deleteExtFiles(t, "png")
 	deleteExtFiles(t, "raw")
 	deleteExtFiles(t, "narpi")
+	//	t.Parallel()
 	for _, s := range fileNames {
 		t.Run("ConstructFromJpgFile-Save-Load-DeconstructToPngFile::"+filepath.Base(s), func(t *testing.T) {
 			testToNarpi(s+"jpg", s+"narpi", t)
 			testPngFromNarpi(s+"narpi", s+"png", t)
+			exec.Command("cp", s+"jpg", s+"jpg.bak").Run()
+			exec.Command("cp", s+"narpi", s+"narpi.bak").Run()
+			exec.Command("cp", s+"png", s+"png.bak").Run()
 
 			log.Println("___")
 			compareJpgPngFiles(t, s)
@@ -257,7 +352,7 @@ func _TestImageFilesJpgToNARPIToPng(t *testing.T) {
 	}
 }
 
-func _TestImageFilesPngToNARPIToJpg(t *testing.T) {
+func TestImageFilesPngToNARPIToJpg(t *testing.T) {
 	fileNames := getTestImagesFilenames(t, "png")
 	deleteExtFiles(t, "jpg")
 	deleteExtFiles(t, "raw")
